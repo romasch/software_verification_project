@@ -14,6 +14,9 @@ axiom N > 0;
 // Define the global instance of the array to be sorted.
 var elems: Array;
 
+// The original array.
+var original: Array;
+
 // Keeps track of the permutation to elems.
 var permutation: Array;
 
@@ -26,39 +29,70 @@ function is_permutation (perm: Array) returns (bool)
 
 procedure Swap (i:int, k:int)
     modifies elems, permutation;
-    requires 0 <= i && k < N;
+    requires 0 <= i && i < N;
     requires 0 <= k && k < N;
+    
+    // Permutation exists.
     requires is_permutation(permutation);
-
+    // Permutation maps to original values.
+    requires (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
+    
     // Elements swapped.
     ensures (elems [i] == old (elems [k]));
     ensures (elems [k] == old (elems [i]));
+    ensures (permutation [i] == old (permutation [k]));
+    ensures (permutation [k] == old (permutation [i]));
 
     // Permutation still valid.
     ensures is_permutation (permutation);
 
+    // No excessive modification
+    ensures (forall n:int :: n != i && n != k ==> elems [n] == old (elems [n]));
+    ensures (forall n:int :: n != i && n != k ==> permutation [n] == old (permutation [n]));
+
     // Permutation updated.
-    ensures (forall n: int :: 0 <= n && n < N ==> elems[n] == old(elems)[permutation[n]]);
+    ensures (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
 {
   var elem, perm: int;
 
   if (i != k) {
-    elem := elems [i];
-    elems [i] := elems [k];
-    elems [k] := elem;
-
+    
     perm := permutation [i];
     permutation [i] := permutation [k];
     permutation [k] := perm;
+    
+    assert (elems [k] == original [permutation [i]]);
+    assert (elems [i] == original [permutation [k]]);
+    
+    elem := elems [i];
+    elems [i] := elems [k];
+    elems [k] := elem;
+    
+    assert (elems [i] == original [permutation [i]]);
+    assert (elems [k] == original [permutation [k]]);
   }
 }
 
 // Sorts elements in elems in range [from, to] using Quicksort.
 // Note: Array is zero-indexed, and 'to' has to be a valid index.
 procedure QuickSort (from: int, to:int)
-    modifies elems;
+    modifies elems, permutation;
     requires 0 <= from;
     requires to < N;
+    // Permutation exists.
+    requires is_permutation(permutation);
+    // Permutation maps to original values.
+    requires (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
+    
+    // No additional changes
+    ensures (forall n: int :: n < from ==> elems [n] == old (elems [n]));
+    ensures (forall n: int :: n > to ==> elems [n] == old (elems [n]));
+    
+    // Permutation exists.
+    ensures is_permutation(permutation);
+    // Permutation maps to original values.
+    ensures (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
+    
     // Need to specify at least that the range of input values stays the same...
     ensures (forall i,j: int :: from <= i && i < j && j <= to ==> elems [i] <= elems [j]);
 {
@@ -69,10 +103,26 @@ procedure QuickSort (from: int, to:int)
         call split_index := Split (from, to);
 
         assert (forall i:int :: from < i && i < split_index ==> elems [i] < elems [split_index]);
-        assert (forall i:int :: split_index < i && i <= to ==> elems [i] >= elems [split_index]);
+        assert (forall i:int :: split_index < i && i <= to ==> elems [split_index] <= elems [i]);
+        
+        assert (split_index != to ==> elems [split_index] <= elems [split_index + 1]);
+        assert (split_index != from ==> elems [split_index-1] <= elems [split_index]);
+        
 
         call QuickSort (from, split_index-1);
+        
+        
+        assert (forall i,j: int :: from <= i && i < j && j < split_index ==> elems [i] <= elems [j]);
+        
+        assert (split_index != to ==> elems [split_index] <= elems [split_index + 1]);
+        assert (split_index != from ==> elems [split_index-1] < elems [split_index]);
+        
         call QuickSort (split_index+1, to);
+                
+        assert (forall i,j: int :: split_index < i && i < j && j <= to  ==> elems [i] <= elems [j]);
+        
+        
+        //assert (split_index != to ==> elems [split_index] <= elems [split_index + 1]);
     }
 }
 
@@ -80,12 +130,26 @@ procedure QuickSort (from: int, to:int)
  * Split the global array in the range [from, to].
  */
 procedure Split (from: int, to:int) returns (position: int)
-    modifies elems;
+    modifies elems, permutation;
     requires 0 <= from && from < to && to < N;
+
+    // Permutation exists.
+    requires is_permutation(permutation);
+    // Permutation maps to original values.
+    requires (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
 
     ensures from <= position && position <= to;
     ensures (forall i: int :: from <= i && i < position ==> elems [i] < elems [position]);
     ensures (forall i: int :: position <= i && i <= to ==> elems [position] <= elems [i]);
+    
+    // No additional changes
+    ensures (forall n: int :: n < from ==> elems [n] == old (elems [n]));
+    ensures (forall n: int :: n > to ==> elems [n] == old (elems [n]));
+    
+    // Permutation exists.
+    ensures is_permutation(permutation);
+    // Permutation maps to original values.
+    ensures (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
 
 {
     var search_left: int;
@@ -108,6 +172,14 @@ procedure Split (from: int, to:int) returns (position: int)
 
         invariant (from <= search_left && search_left <= to);
         invariant (from-1 <= search_right && search_right < to);
+        
+        invariant (forall n: int :: n < from ==> elems [n] == old (elems [n]));
+        invariant (forall n: int :: n > to ==> elems [n] == old (elems [n]));
+        
+        // Permutation exists.
+        invariant is_permutation(permutation);
+        // Permutation maps to original values.
+        invariant (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
 
     {
         // Find a big element on the left side.
@@ -135,9 +207,10 @@ procedure Split (from: int, to:int) returns (position: int)
         // If indices are still correct, swap them.
         if (search_left < search_right)
         {
-            tmp := elems [search_left];
-            elems [search_left] := elems [search_right];
-            elems [search_right] := tmp;
+            call Swap (search_left, search_right);
+//            tmp := elems [search_left];
+//            elems [search_left] := elems [search_right];
+//            elems [search_right] := tmp;
         }
 
         assert (search_left >= search_right ==> elems [search_left] >= pivot);
@@ -165,6 +238,7 @@ procedure Split (from: int, to:int) returns (position: int)
     }
 
     // Finally, swap the pivot.
-    elems [to] := elems [position];
-    elems [position] := pivot;
+    call Swap (position, to);
+//    elems [to] := elems [position];
+//    elems [position] := pivot;
 }
