@@ -27,6 +27,16 @@ function is_permutation (perm: Array) returns (bool)
   (forall i,j:int :: 0 <= i && i < j && j < N ==> perm[i] != perm[j])
 }
 
+function is_smaller (from, to: int, arr: Array, bound: int) returns (bool)
+{
+  (forall i:int :: from <= i && i <= to ==> arr [i] < bound)
+}
+
+function is_greater_equal (from, to: int, arr: Array, bound: int) returns (bool)
+{
+  (forall i:int :: from <= i && i <= to ==> bound <= arr [i]) 
+}
+
 procedure Swap (i:int, k:int)
     modifies elems, permutation;
     requires 0 <= i && i < N;
@@ -75,12 +85,17 @@ procedure Swap (i:int, k:int)
 
 // Sorts elements in elems in range [from, to] using Quicksort.
 // Note: Array is zero-indexed, and 'to' has to be a valid index.
-procedure QuickSort (from: int, to:int)
+procedure QuickSort (from: int, to:int, check_smaller: bool, upper: int, check_greater: bool, lower: int)
     modifies elems, permutation;
     requires 0 <= from;
     requires to < N;
     // Permutation exists.
     requires is_permutation(permutation);
+    
+    // Upper and lower bounds
+    requires check_smaller ==> is_smaller (from, to, elems, upper);
+    requires check_greater ==> is_greater_equal (from, to, elems, lower);
+    
     // Permutation maps to original values.
     requires (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
     
@@ -96,10 +111,15 @@ procedure QuickSort (from: int, to:int)
     // Permutation maps to original values.
     ensures (forall n: int :: 0 <= n && n < N ==> elems [n] == original [permutation [n]]);
     
+    // Upper and lower bounds
+    ensures check_smaller ==> is_smaller (from, to, elems, upper);
+    ensures check_greater ==> is_greater_equal (from, to, elems, lower);
+    
     // Need to specify at least that the range of input values stays the same...
     ensures (forall i,j: int :: from <= i && i < j && j <= to ==> elems [i] <= elems [j]);
 {
     var split_index: int;
+    var pivot: int;
 
     if (from < to)
     {
@@ -111,18 +131,26 @@ procedure QuickSort (from: int, to:int)
         assert (split_index != to ==> elems [split_index] <= elems [split_index + 1]);
         assert (split_index != from ==> elems [split_index-1] <= elems [split_index]);
         
-
-        call QuickSort (from, split_index-1);
+        assert is_smaller (from, split_index-1, elems, elems [split_index]);
+        assert is_greater_equal (split_index+1, to, elems, elems [split_index]);
         
+        
+        pivot := elems [split_index];
+
+        call QuickSort (from, split_index-1, true, pivot, check_greater, lower);
+        
+        assert (elems [split_index] == pivot);
         
         assert (forall i,j: int :: from <= i && i < j && j < split_index ==> elems [i] <= elems [j]);
         
-        assert (split_index != to ==> elems [split_index] <= elems [split_index + 1]);
-        assert (split_index != from ==> elems [split_index-1] <= elems [split_index]);
+        assert (forall i: int :: from <= i && i <= split_index-1 ==> elems [i] < pivot);
+        assert (split_index != from ==> elems [split_index-1] < elems [split_index]);
         
-        call QuickSort (split_index+1, to);
+        call QuickSort (split_index+1, to, check_smaller, upper, true, elems [split_index]);
                 
         assert (forall i,j: int :: split_index < i && i < j && j <= to  ==> elems [i] <= elems [j]);
+        
+        assert (split_index != to ==> elems [split_index] <= elems [split_index + 1]);
         
         
         //assert (split_index != to ==> elems [split_index] <= elems [split_index + 1]);
@@ -250,4 +278,4 @@ procedure Split (from: int, to:int) returns (position: int)
     call Swap (position, to);
 //    elems [to] := elems [position];
 //    elems [position] := pivot;
-}
+} 
