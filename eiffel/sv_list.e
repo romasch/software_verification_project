@@ -1,4 +1,4 @@
-class
+cclass
     SV_LIST
 
 create
@@ -280,6 +280,7 @@ feature -- Sort implementations
                     a.count > 0
                     in_bounds: 2 <= i and i <= a.count + 1
                     value = a [i-1]
+                    pivot = a[1]
                         -- This is important for variant of recursive calls.
                     no_additional_elements: i - 2 = left.count + right.count
                     no_additional_elements_2: a.sequence.interval (2, i-1).count = left.sequence.count + right.sequence.count
@@ -296,15 +297,17 @@ feature -- Sort implementations
                     distributed: a[i-1] = pivot or else (left.count > 0 and then left[left.count] = a[i-1]) or (right.count > 0 and then right [right.count] = a[i-1])
 --                    distributed_3: i > 2 implies (left.sequence ~ left.sequence.old_ & value) xor (right.sequence ~ right.sequence.old_ & value)
 
-                    asdf: across a.sequence.interval (2, i-1).domain as z all a[z.item] <= pivot implies left.has (a[z.item]) end
+--                    asdf: across a.sequence.interval (2, i-1).domain as z all a[z.item] <= pivot implies left.has (a[z.item]) end
 
-                    same_elements_3: a.sequence.interval (2,i-1).to_bag ~ (left.sequence + right.sequence).to_bag
+--                    same_elements_3: a.sequence.interval (2,i-1).to_bag ~ (left.sequence + right.sequence).to_bag
 
-                    same_elements: is_permutation (a.sequence.tail (2), left.sequence + right.sequence + a.sequence.tail (i))
+--                    same_elements: is_permutation (a.sequence.tail (2), left.sequence + right.sequence + a.sequence.tail (i))
 
 
                  --   distributed: i > 2 implies (left.sequence.last = a[i-1] xor right.sequence.last = a[i-1])
                     same_elements_2: is_permutation (a.sequence.interval (2,i-1), left.sequence + right.sequence)
+--                    same_elements_4: is_permutation (a.sequence.interval (1, i-1), (left.sequence + right.sequence).extended (pivot))
+                    pivot_correct: a.sequence.interval (1,1) = create {MML_SEQUENCE[INTEGER]}.singleton (pivot)
 
 --                    test2: create {MML_SEQUENCE[INTEGER]}.singleton (pivot) + a.sequence.but_first ~ a.sequence
 --                    test: is_permutation (create {MML_SEQUENCE[INTEGER]}.singleton (pivot) + a.sequence.but_first, a.sequence)
@@ -337,8 +340,121 @@ feature -- Sort implementations
         ensure
             Result.is_wrapped
             Result.is_fresh
---            same_elementes: is_permutation (Result.sequence, a.sequence)
+            same_elementes: is_permutation (Result.sequence, a.sequence)
             -- most postconditions?
+        end
+
+
+    quick_sort_2 (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
+        note
+            status: impure
+        require
+            wrapped: a.is_wrapped
+
+            decreases([])
+        local
+            pivot: INTEGER
+            split_index: INTEGER
+
+            swap_temp: INTEGER
+
+            left_idx, right_idx: INTEGER
+
+            left_part, pivot_part, right_part: SIMPLE_ARRAY [INTEGER]
+
+        do
+            create Result.make_from_array (a)
+            check is_permutation (a.sequence, Result.sequence) end
+
+            if a.count > 1 then
+
+            from
+                left_idx := 1
+                right_idx := Result.count -1
+                pivot := Result [Result.count]
+            invariant
+                permutation: is_permutation (a.sequence, Result.sequence)
+                wrapped: Result.is_wrapped and a.is_wrapped
+                no_termination_proof: decreases([])
+                in_bounds: 0 <= right_idx and right_idx <= Result.count - 1
+
+                pivot = Result [Result.count]
+
+                partial_split_left: across Result.sequence.domain as i all i.item < left_idx implies Result [i.item] < pivot end
+                partial_split_rigth: across Result.sequence.domain as i all i.item > right_idx implies Result [i.item] >= pivot end
+            until
+                left_idx > right_idx
+            loop
+                from
+                invariant
+                    partial_split_left: across Result.sequence.domain as i all i.item < left_idx implies Result [i.item] < pivot end
+                until
+                    left_idx > Result.count or else Result [left_idx] >= pivot
+                loop
+                    left_idx := left_idx + 1
+                variant
+                    Result.count - left_idx + 1
+                end
+                from
+                invariant
+                    -- Why is this necessary on decrementing loops, but not on incrementing loops?
+                    in_bounds: 0 <= right_idx and right_idx <= Result.count - 1
+                    partial_split_rigth: across Result.sequence.domain as i all i.item > right_idx implies Result [i.item] >= pivot end
+                until
+                    right_idx < 1 or else Result [right_idx] < pivot
+                loop
+                    right_idx := right_idx - 1
+                variant
+                    right_idx + 1
+                end
+
+                if left_idx < right_idx then
+                    swap_temp := Result [left_idx]
+                    Result [left_idx] := Result[right_idx]
+                    Result [right_idx] := swap_temp
+                end
+            end
+
+            check across Result.sequence.domain as i all i.item < left_idx implies Result [i.item] < pivot end end
+            check across Result.sequence.domain as i all i.item > right_idx implies Result [i.item] >= pivot end end
+
+
+            if Result [left_idx] < pivot then
+                split_index := left_idx + 1
+            else
+                split_index := left_idx
+            end
+            swap_temp := Result [split_index]
+            Result [split_index] := Result[Result.count]
+            Result [Result.count] := swap_temp
+
+            check across Result.sequence.domain as i all i.item < split_index implies Result [i.item] < Result [split_index] end end
+            check across Result.sequence.domain as i all i.item > split_index implies Result [i.item] >= Result [split_index] end end
+
+            if split_index-1 > 1 then
+                left_part := Result.subarray (1, split_index -1)
+            else
+                create left_part.make_empty
+            end
+
+            if split_index+1 < Result.count then
+                right_part := Result.subarray (split_index + 1, Result.count)
+            else
+                create right_part.make_empty
+            end
+--            left_part := quick_sort_2 (left_part)
+--            right_part := quick_sort_2 (right_part)
+
+--            check is_permutation (left_part.sequence, Result.sequence.interval (1, split_index-1)) end
+--            check is_permutation (right_part.sequence, Result.sequence.interval (split_index + 1, Result.count)) end
+
+--            create Result.init (left_part.sequence + Result[split_index] + right_part.sequence)
+
+
+            end -- if a.count > 1
+        ensure
+            permutation: is_permutation (a.sequence, Result.sequence)
+            sorted: is_sorted (a)
         end
 
     bucket_sort (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
