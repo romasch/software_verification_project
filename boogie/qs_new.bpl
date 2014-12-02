@@ -219,7 +219,7 @@ procedure Split (from: int, to:int, check_smaller: bool, upper: int, check_great
         invariant (forall n: int :: n > to ==> elems [n] == old (elems [n]));
 
         invariant (forall n: int :: n < from ==> elems [n] == old (elems [n]) && permutation [n] == old (permutation[n]));
-        invariant (forall n: int :: n > to ==> elems [n] == old (elems [n])&& permutation [n] == old (permutation[n]));
+        invariant (forall n: int :: n > to ==> elems [n] == old (elems [n]) && permutation [n] == old (permutation[n]));
 
         invariant check_smaller ==> is_smaller (from, to, elems, upper);
         invariant check_greater ==> is_greater_equal (from, to, elems, lower);

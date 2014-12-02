@@ -1,4 +1,4 @@
-cclass
+class
     SV_LIST
 
 create
@@ -258,6 +258,7 @@ feature -- Sort implementations
             modify([])
         local
             left, right: SIMPLE_ARRAY [INTEGER]
+            pivot_arr: SIMPLE_ARRAY [INTEGER]
             pivot: INTEGER
             i: INTEGER
             value: INTEGER
@@ -268,8 +269,10 @@ feature -- Sort implementations
                 from
                     create left.make_empty
                     create right.make_empty
+                    create pivot_arr.make (1)
                     pivot := a [1]
                     value := a [1]
+                    pivot_arr [1] := pivot
                     i := 2
                 invariant
                     a.is_wrapped
@@ -305,8 +308,10 @@ feature -- Sort implementations
 
 
                  --   distributed: i > 2 implies (left.sequence.last = a[i-1] xor right.sequence.last = a[i-1])
-                    same_elements_2: is_permutation (a.sequence.interval (2,i-1), left.sequence + right.sequence)
+--                    same_elements_2: is_permutation (a.sequence.interval (2,i-1), left.sequence + right.sequence)
 --                    same_elements_4: is_permutation (a.sequence.interval (1, i-1), (left.sequence + right.sequence).extended (pivot))
+                    static_pivot_arr: pivot_arr [1] = pivot and pivot_arr.count = 1
+                    same_elements_5: is_permutation (a.sequence.interval (1, i-1), pivot_arr.sequence + left.sequence + right.sequence)
                     pivot_correct: a.sequence.interval (1,1) = create {MML_SEQUENCE[INTEGER]}.singleton (pivot)
 
 --                    test2: create {MML_SEQUENCE[INTEGER]}.singleton (pivot) + a.sequence.but_first ~ a.sequence
@@ -379,6 +384,8 @@ feature -- Sort implementations
                 in_bounds: 0 <= right_idx and right_idx <= Result.count - 1
 
                 pivot = Result [Result.count]
+                
+                Result.count = a.count
 
                 partial_split_left: across Result.sequence.domain as i all i.item < left_idx implies Result [i.item] < pivot end
                 partial_split_rigth: across Result.sequence.domain as i all i.item > right_idx implies Result [i.item] >= pivot end
@@ -387,9 +394,10 @@ feature -- Sort implementations
             loop
                 from
                 invariant
+                    in_bounds: 1 <= left_idx and left_idx <= Result.count
                     partial_split_left: across Result.sequence.domain as i all i.item < left_idx implies Result [i.item] < pivot end
                 until
-                    left_idx > Result.count or else Result [left_idx] >= pivot
+                    left_idx >= Result.count or else Result [left_idx] >= pivot
                 loop
                     left_idx := left_idx + 1
                 variant
@@ -430,31 +438,49 @@ feature -- Sort implementations
 
             check across Result.sequence.domain as i all i.item < split_index implies Result [i.item] < Result [split_index] end end
             check across Result.sequence.domain as i all i.item > split_index implies Result [i.item] >= Result [split_index] end end
+            check is_permutation (Result.sequence, a.sequence) end
 
-            if split_index-1 > 1 then
-                left_part := Result.subarray (1, split_index -1)
-            else
-                create left_part.make_empty
-            end
+            left_part := get_subarray (Result, 1, split_index - 1)
+            right_part := get_subarray (Result, split_index + 1, Result.count)
+            
+            check right_part.count + left_part.count + 1 = Result.count end
+--            check assume: across right_part.sequence.domain as i all right_part [i.item] >= Result [split_index] end end
 
-            if split_index+1 < Result.count then
-                right_part := Result.subarray (split_index + 1, Result.count)
-            else
-                create right_part.make_empty
-            end
---            left_part := quick_sort_2 (left_part)
---            right_part := quick_sort_2 (right_part)
+            check (left_part.sequence + Result [split_index] + right_part.sequence) ~ Result.sequence end
+            check is_permutation (left_part.sequence, Result.sequence.interval (1, split_index-1)) end
 
---            check is_permutation (left_part.sequence, Result.sequence.interval (1, split_index-1)) end
---            check is_permutation (right_part.sequence, Result.sequence.interval (split_index + 1, Result.count)) end
+            check across left_part.sequence.domain as i all left_part [i.item] < Result [split_index] end end
+            left_part := quick_sort_2 (left_part)
+            check perm_left: is_permutation (left_part.sequence, Result.sequence.interval (1, split_index-1)) end
+            check still_sorted_left: across left_part.sequence.domain as i all left_part [i.item] < Result [split_index] end end
 
---            create Result.init (left_part.sequence + Result[split_index] + right_part.sequence)
+            check across right_part.sequence.domain as i all right_part [i.item] >= Result [split_index] end end
+            check is_permutation (right_part.sequence, Result.sequence.interval (split_index + 1, Result.count)) end
+            right_part := quick_sort_2 (right_part)
+            check perm_right: is_permutation (right_part.sequence, Result.sequence.interval (split_index + 1, Result.count)) end
+            check still_sorted_right: across right_part.sequence.domain as i all right_part [i.item] >= Result [split_index] end end
+
+            create Result.init (left_part.sequence.extended (Result[split_index]) + right_part.sequence)
 
 
             end -- if a.count > 1
         ensure
+            same_count: a.count = Result.count
             permutation: is_permutation (a.sequence, Result.sequence)
             sorted: is_sorted (a)
+        end
+
+    get_subarray (a: SIMPLE_ARRAY [INTEGER]; l,u: INTEGER): SIMPLE_ARRAY [INTEGER]
+        require
+            l_in_bounds: 1 <= l
+            u_in_bounds: u <= a.count
+        do
+            create Result.make_empty
+        ensure
+            wrapped: Result.is_wrapped
+            correct_empty: l > u implies Result.count = 0
+            same_elements: l <= u implies a.sequence.interval (l,u) ~ Result.sequence
+    		result_count_definition: l <= u implies Result.count = (u - l + 1)
         end
 
     bucket_sort (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
