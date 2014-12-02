@@ -1,8 +1,8 @@
 class
     SV_LIST
-
+    
 create
-    make, make_from_array
+    make
 
 feature {NONE} -- Initialization
 
@@ -16,21 +16,6 @@ feature {NONE} -- Initialization
             array.sequence.is_constant (0)
             count = 0
         end
-
-    make_from_array (a: SIMPLE_ARRAY [INTEGER])
-            -- Initialize `sequence' to the content of `a'
-        note
-            status: creator
-        require
-            attached a
-            a.count <= Max_count
-        do
-            create array.make_from_array (a)
-        ensure
-            count = a.count
-            array.sequence = a.sequence
-        end
-
 feature -- Constant parameters
 
     max_count: INTEGER = 20
@@ -44,82 +29,7 @@ feature -- Basic API
     array: SIMPLE_ARRAY [INTEGER]
             -- Sequence of integers represented as an array
 
-    empty: BOOLEAN
-            -- Is `array' empty?
-        note
-            status: functional
-        require
-            inv
-        do
-            Result := (count = 0)
-        ensure
-            Result = (count = 0)
-        end
-
-    in_bound (k: INTEGER): BOOLEAN
-            -- Is `k' a position within the bounds of `array'?
-        note
-            status: functional
-        require
-            inv_ok: inv
-        do
-            -- implementation
-            Result := 1 <= k and k <= count
-        ensure
-            -- postconditions
-            correct: Result = (1 <= k and k <= count)
-        end
-
-    at (k: INTEGER): INTEGER
-            -- Element at position `k' in `array'
-        require
-            -- preconditions
-            bounded: in_bound (k)
-            inv_ok: inv --??
-        do
-            -- implementation
-            Result := array [k]
-        ensure
-            -- postconditions
-            Result = array [k]
-        end
-
-    put (k: INTEGER; val: INTEGER)
-            -- Write `val' at position `k' in `array'
-        require
-            in_bound (k)
-        do
-            -- implementation
-            array [k] := val
-        ensure
-            array [k] = val
-        end
-
-    extend (val: INTEGER)
-            -- Extend `array' with an element `val'
-        require
-            -- preconditions
-            enough_space: count < max_count
-        do
-            array.force (val, count+1)
-        ensure
-            -- postconditions
-            more_elements: count = old count + 1
-            in_array: array [count] = val
-            inserted: at (count) = val
-        end
-
-    remove
-            -- Remove the last element of `array'
-        require
-            -- preconditions
-            not_empty: count > 0
-        do
-            array.remove_at (count)
-        ensure
-            -- postconditions
-            less_elements: count = old count - 1
-        end
+feature
 
     count: INTEGER
             -- Number of elements stored in `array'
@@ -183,45 +93,8 @@ feature -- For use in specifications
         end
 
 feature -- Sort implementations
-    test_permutation_1 (s: MML_SEQUENCE [INTEGER]): like s
-        require
-            not_empty: not s.is_empty
-        do
-            Result := s.but_last.extended (s.last)
-        ensure
-            same_sequence: s ~ Result
-            permutation: is_permutation (s, Result)
-        end
 
-    test_permutation_2 (s: MML_SEQUENCE [INTEGER]): like s
-        require
-            not_empty: not s.is_empty
-        do
-            Result := s.but_first.extended (s.first)
-        ensure
-            exact: Result ~ s.tail (2).extended (s.first)
-            permutation: is_permutation (s, Result)
-        end
-
-    test_permutation_3 (s: MML_SEQUENCE [INTEGER]; v: INTEGER): like s
-        require
-            not_empty: not s.is_empty
-        do
-            Result := s.prepended (v)
-        ensure
---            exact: Result ~ s.tail (2).extended (s.first)
-            permutation: is_permutation (s.extended (v), Result)
-        end
-
-    test_across: SIMPLE_ARRAY [INTEGER]
-        do
-            create Result.make_empty
-        ensure
-            empty: Result.count = 0
-            should_verify: across Result.sequence as idx all Result [idx.item] = 42 end
-        end
-
-    concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
+    concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
             -- return the array comprising the elements of `a' followed by those of `b'
         note
             status: impure
@@ -229,6 +102,10 @@ feature -- Sort implementations
         require
             a.is_wrapped
             b.is_wrapped
+            smaller: check_smaller implies across a.sequence.domain as idx all a[idx.item] <= upper end
+            greater: check_greater implies across a.sequence.domain as idx all a[idx.item] > lower end
+            smaller: check_smaller implies across b.sequence.domain as idx all b[idx.item] <= upper end
+            greater: check_greater implies across b.sequence.domain as idx all b[idx.item] > lower end
         local
             i, j: INTEGER
         do
@@ -241,6 +118,10 @@ feature -- Sort implementations
                 -- more loop invariants?
                 correct_insert_position: j = Result.count + 1
                 partial_result: Result.sequence = a.sequence + b.sequence.front (i-1)
+
+                smaller: check_smaller implies across Result.sequence.domain as idx all Result [idx.item] <= upper end
+                
+                greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
             until
                 i > b.count
             loop
@@ -257,6 +138,8 @@ feature -- Sort implementations
             same_elems: across a.sequence.domain as idx all Result [idx.item] = a[idx.item] end
             same_elems_2: across b.sequence.domain as idx all Result [idx.item + a.count] = b[idx.item] end
             
+            smaller: check_smaller implies across Result.sequence.domain as idx all Result [idx.item] <= upper end
+            greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
         end
 
     quick_sort (a: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
@@ -278,7 +161,7 @@ feature -- Sort implementations
             i: INTEGER
             value: INTEGER
         do
-            if a.count <= 0 then --else a [1] = a [a.count] then
+            if a.count = 0 then --else a [1] = a [a.count] then
                 create Result.make_from_array (a)
             else
                 from
@@ -300,6 +183,9 @@ feature -- Sort implementations
                     i := 2
                     
                 invariant
+                    
+            -- note: in loop invariants, you should write X.wrapped for
+            -- each array X that the loop modifies
                     a.is_wrapped
                     left.is_wrapped
                     right.is_wrapped
@@ -381,10 +267,15 @@ feature -- Sort implementations
                 check greater_equal: across right.sequence.domain as idx all right [idx.item] > pivot end end
 
                 left := quick_sort (left, True, check_greater, pivot, lower)
+                check smaller: across left.sequence.domain as idx all left[idx.item] <= pivot end end
+                check pivot_smaller: check_smaller implies pivot <= upper end
+                check greater: check_greater implies across left.sequence.domain as idx all left[idx.item] > lower end end
+                
+                
                 right := quick_sort (right, check_smaller, True, upper, pivot)
-
-                check smaller: across left.sequence.domain as idx all left [idx.item] <= pivot end end
-                check greater_equal: across right.sequence.domain as idx all right [idx.item] > pivot end end
+                check smaller: check_smaller implies across right.sequence.domain as idx all right[idx.item] <= upper end end
+                check pivot_greater: check_greater implies pivot > lower end
+                check greater: across right.sequence.domain as idx all right[idx.item] > pivot end end
                 
                 check same_count: a.count = control.count end
                 check control_equal_a: across control.sequence.domain as across_idx all control [across_idx.item] =  a [across_idx.item] end end
@@ -398,24 +289,17 @@ feature -- Sort implementations
                 end
                 
                 check effectively_permutation:
-                    is_permutation (control.sequence, left.sequence + pivot_arr.sequence + right.sequence)
-                    and a.count = control.count
+                    is_permutation (control.sequence, left.sequence + pivot_arr.sequence + right.sequence) and
+                    a.count = control.count
                     and across control.sequence.domain as across_idx all control [across_idx.item] =  a [across_idx.item] end
                 end
-                
-                --check assume: is_permutation (control.sequence, a.sequence) end
-                Result := concatenate_arrays (concatenate_arrays (left, pivot_arr), right)
+                      
+                Result := concatenate_arrays (concatenate_arrays (left, pivot_arr, check_smaller, check_greater, upper, lower), right, check_smaller, check_greater, upper, lower)
                 
                 check assume: is_permutation (a.sequence, Result.sequence) end
-                check assume: is_sorted (Result) end
-                
 
---                left.force (pivot, left.count+1)
---                Result := concatenate_arrays (left, right)
             end
 
-            -- note: in loop invariants, you should write X.wrapped for
-            -- each array X that the loop modifies
         ensure
             Result.is_wrapped
             Result.is_fresh
@@ -426,21 +310,6 @@ feature -- Sort implementations
             smaller: check_smaller implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
             greater: check_greater implies across Result.sequence.domain as idx all Result[idx.item] > lower end
             -- most postconditions?
-        end
-
-
-
-    get_subarray (a: SIMPLE_ARRAY [INTEGER]; l,u: INTEGER): SIMPLE_ARRAY [INTEGER]
-        require
-            l_in_bounds: 1 <= l
-            u_in_bounds: u <= a.count
-        do
-            create Result.make_empty
-        ensure
-            wrapped: Result.is_wrapped
-            correct_empty: l > u implies Result.count = 0
-            same_elements: l <= u implies a.sequence.interval (l,u) ~ Result.sequence
-        	result_count_definition: l <= u implies Result.count = (u - l + 1)
         end
 
     bucket_sort (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
