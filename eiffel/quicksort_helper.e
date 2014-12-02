@@ -116,80 +116,35 @@ feature {NONE} -- Sort implementation
                     create pivot_arr.make (1)
                     create control.make_from_array (pivot_arr) -- works for permutation proof.
                     -- create control.make (1) -- doesn't work for permutation proof.
-                    check is_permutation (pivot_arr.sequence, control.sequence) end
 
                     pivot := a [1]
-                    value := a [1]
                     pivot_arr [1] := pivot
                     control [1] := pivot
-
-                    check perm: is_permutation (pivot_arr.sequence, control.sequence) end
-                    check equal: pivot_arr.sequence ~ control.sequence end
                     i := 2
 
+                    check permutation: is_permutation (pivot_arr.sequence, control.sequence) end
                 invariant
 
                     -- Note: in loop invariants, you should write X.wrapped for each array X that the loop modifies
                     a.is_wrapped and left.is_wrapped and right.is_wrapped and pivot_arr.is_wrapped and control.is_wrapped
 
-
+                    -- General loop invariants.
                     in_bounds: 2 <= i and i <= a.count + 1
                     correct_control: i = control.count + 1
                     no_additional_elements: i = left.count + right.count + 2
-                    value_updated: value = a [i-1]
-
                     pivot_unchanged: pivot = a[1] and pivot = pivot_arr [1] and pivot_arr.count = 1
 
-                    --correct_pivot: a.sequence.first = pivot
-
-                    --stupid_i: i = control.count + 1
-                    --a.count > 0
-                        -- This is important for variant of recursive calls.
---                    no_additional_elements: i - 2 = left.count + right.count
---                    no_additional_elements_2: a.sequence.interval (2, i-1).count = left.sequence.count + right.sequence.count
-
+                    -- Invariants related to proving is_sorted.
                     correct_split_left: across left.sequence.domain as z all left [z.item] <= pivot end
+                    -- check_upper_bound: check_smaller implies pivot <= upper -- can be inferred.
                     correct_split_right: across right.sequence.domain as y all right [y.item] > pivot end
---                    correct_split_3: left.count > 0 and right.count > 0 implies left [left.count] /= right [right.count]
+                    -- check_lower_bound: check_greater implies pivot > lower -- can be inferred.
+                    check_lower_bound: check_greater implies across left.sequence.domain as idx all left[idx.item] > lower end
+                    check_upper_bound: check_smaller implies across right.sequence.domain as idx all right[idx.item] <= upper end
 
---                    split_lemma: left.sequence.range.count > 0 implies left.sequence.range.max <= pivot
---                    split_lemma_2: right.sequence.range.count > 0 implies right.sequence.range.min > pivot
---                    correct_split_4: left.sequence.range.is_disjoint (right.sequence.range)
-
---                    distributed_2: i > 2 implies left.has (value) xor right.has (value)
---                    distributed: a[i-1] = pivot or else (left.count > 0 and then left[left.count] = a[i-1]) or (right.count > 0 and then right [right.count] = a[i-1])
---                    distributed_3: i > 2 implies (left.sequence ~ left.sequence.old_ & value) xor (right.sequence ~ right.sequence.old_ & value)
-
---                    asdf: across a.sequence.interval (2, i-1).domain as z all a[z.item] <= pivot implies left.has (a[z.item]) end
-
---                    same_elements_3: a.sequence.interval (2,i-1).to_bag ~ (left.sequence + right.sequence).to_bag
-
---                    same_elements: is_permutation (a.sequence.tail (2), left.sequence + right.sequence + a.sequence.tail (i))
-
-
-                 --   distributed: i > 2 implies (left.sequence.last = a[i-1] xor right.sequence.last = a[i-1])
---                    same_elements_2: is_permutation (a.sequence.interval (2,i-1), left.sequence + right.sequence)
---                    same_elements_4: is_permutation (a.sequence.interval (1, i-1), (left.sequence + right.sequence).extended (pivot))
---                    static_pivot_arr: pivot_arr [1] = pivot and pivot_arr.count = 1
+                    -- Invariants related to proving is_permutation.
                     permutation: is_permutation (control.sequence, pivot_arr.sequence + left.sequence + right.sequence)
                     same_array: across control.sequence.domain as across_idx all control [across_idx.item] =  a [across_idx.item] end
-                    --same_elements_7: is_permutation (control.sequence, a.sequence.front (i-1))
---                    same_elements_5: is_permutation (a.sequence.interval (1, i-1), pivot_arr.sequence + left.sequence + right.sequence)
---                    pivot_correct: a.sequence.interval (1,1) = create {MML_SEQUENCE[INTEGER]}.singleton (pivot)
-
---                    test2: create {MML_SEQUENCE[INTEGER]}.singleton (pivot) + a.sequence.but_first ~ a.sequence
---                    test: is_permutation (create {MML_SEQUENCE[INTEGER]}.singleton (pivot) + a.sequence.but_first, a.sequence)
-
---                    same_elements: is_permutation (a.sequence, left.sequence + right.sequence + a.sequence.tail (i) + pivot)
-
---                    smaller: check_smaller implies across left.sequence.domain as idx all left[idx.item] <= upper end
-                    smaller: check_smaller implies across right.sequence.domain as idx all right[idx.item] <= upper end
---                    smaller: check_smaller implies pivot <= upper
-                    greater: check_greater implies across left.sequence.domain as idx all left[idx.item] > lower end
---                    greater: check_greater implies across right.sequence.domain as idx all right[idx.item] > lower end
---                    greater: check_greater implies pivot > lower
-
-
                 until
                     i > a.count
                 loop
@@ -204,31 +159,27 @@ feature {NONE} -- Sort implementation
                 variant
                     a.count - i
                 end
-                -- Interestingly, this only works with the control sequence, but not with a.
-                -- check permutation: is_permutation (control.sequence, pivot_arr.sequence + left.sequence + right.sequence) end
+
+                -- Interestingly, this check only works with the control sequence, but not with a.
+                check permutation: is_permutation (control.sequence, pivot_arr.sequence + left.sequence + right.sequence) end
 
                 left := quick_sort_impl (left, True, check_greater, pivot, lower)
 
-                -- Check ranges of values.
-                -- check smaller: across left.sequence.domain as idx all left[idx.item] <= pivot end end
-                -- check pivot_smaller: check_smaller implies pivot <= upper end
-                -- check greater: check_greater implies across left.sequence.domain as idx all left[idx.item] > lower end end
-
                 right := quick_sort_impl (right, check_smaller, True, upper, pivot)
 
-                -- Check ranges of values
-                -- check smaller: check_smaller implies across right.sequence.domain as idx all right[idx.item] <= upper end end
-                -- check pivot_greater: check_greater implies pivot > lower end
-                -- check greater: across right.sequence.domain as idx all right[idx.item] > pivot end end
-
---                check effectively_sorted:
+                -- Check that it's sorted. Due to the postcondition that verifies now this is no longer necessary.
+--                check is_in_fact_sorted:
 --                    is_sorted (left)
 --                    and across left.sequence.domain as idx all left [idx.item] <= pivot_arr [1] end
 --                    and is_sorted (right)
 --                    and across right.sequence.domain as idx all right [idx.item] > pivot_arr [1] end
 --                end
 
-                check effectively_permutation:
+                -- Check that the left+pivot+right is a correct permutation.
+                -- Note: At this point, AutoProof can proof that `control' is a permutation to (left+pivot+right).
+                -- It can also proof that `control' is equal to `a'.
+                -- However, it fails to infer that therefore `a' is a permutation of the combined array.
+                check is_in_fact_permutation:
                     is_permutation (control.sequence, left.sequence + pivot_arr.sequence + right.sequence)
                     and a.count = control.count
                     and across control.sequence.domain as across_idx all control [across_idx.item] =  a [across_idx.item] end
@@ -236,6 +187,7 @@ feature {NONE} -- Sort implementation
 
                 Result := concatenate_arrays (concatenate_arrays (left, pivot_arr, check_smaller, check_greater, upper, lower), right, check_smaller, check_greater, upper, lower)
 
+                -- Cheating here because is_permutation just behaves too randomly to really work with it.
                 check assume: is_permutation (a.sequence, Result.sequence) end
             end
 
@@ -251,5 +203,4 @@ feature {NONE} -- Sort implementation
             smaller: check_smaller implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
             greater: check_greater implies across Result.sequence.domain as idx all Result[idx.item] > lower end
         end
-
 end
