@@ -4,6 +4,10 @@ class
 feature -- API
 
     quick_sort (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
+            -- Sort `a' using quicksort.
+        note
+            status: impure
+            explicit: contracts
         require
             a.is_wrapped
         do
