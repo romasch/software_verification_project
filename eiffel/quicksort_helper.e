@@ -13,9 +13,10 @@ feature -- API
         do
             Result := quick_sort_impl (a, false, false, 0, 0)
         ensure
-            wrapped: Result.is_wrapped
+            default_stuff: Result.is_wrapped and Result.is_fresh
             sorted: is_sorted (Result)
             permutation: is_permutation (Result.sequence, a.sequence)
+            same_count: Result.count = a.count
         end
 
 feature -- For use in specifications
@@ -196,10 +197,11 @@ feature {NONE} -- Sort implementation
             end
 
         ensure
-            standard_stuff: Result.is_wrapped and Result.is_fresh
+            default_stuff: Result.is_wrapped and Result.is_fresh
 
             -- The elements are the same.
             same_elementes: is_permutation (Result.sequence, a.sequence)
+            same_count: Result.count = a.count
             -- The result is sorted.
             sorted: is_sorted (Result)
 

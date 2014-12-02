@@ -146,8 +146,8 @@ feature -- Sorting
                 array := quick_sort (array)
             end
         ensure
-            is_sorted (array)
-            is_permutation (array.sequence, old array.sequence)
+            sorted: is_sorted (array)
+            permutation: is_permutation (array.sequence, old array.sequence)
         end
 
 feature -- For use in specifications
@@ -169,9 +169,7 @@ feature -- For use in specifications
         require
             a /= Void
         do
-            -- Result := ??
             Result := across a.sequence.domain as i all (i.item < a.count) implies a.sequence [i.item] <= a.sequence [i.item + 1] end
-  --          Result := across 1 |..| (a.count-1) as idx all a [idx.item] <= a [idx.item + 1] end
         end
 
     is_permutation (a, b: MML_SEQUENCE [INTEGER]): BOOLEAN
@@ -258,9 +256,10 @@ feature -- Sort implementations
             -- see quicksort_helper.e.
             create Result.make_empty
         ensure
-            wrapped: Result.is_wrapped
+            default_stuff: Result.is_wrapped and Result.is_fresh
             sorted: is_sorted (Result)
             permutation: is_permutation (Result.sequence, a.sequence)
+            same_count: Result.count = a.count
         end
 
     bucket_sort (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
@@ -274,12 +273,14 @@ feature -- Sort implementations
         local
 
         do
+            create Result.make_empty
             -- note: in loop invariants, you should write X.wrapped for
             -- each array X that the loop modifies
         ensure
-            Result.is_wrapped
-            Result.is_fresh
-            -- more postconditions?
+            default_stuff: Result.is_wrapped and Result.is_fresh
+            sorted: is_sorted (Result)
+            permutation: is_permutation (Result.sequence, a.sequence)
+            same_count: Result.count = a.count
         end
 
 invariant
@@ -287,3 +288,4 @@ invariant
     owns_array: owns = [array]
     array_size_restriction: 0 <= array.sequence.count and array.sequence.count <= Max_count
 end
+
