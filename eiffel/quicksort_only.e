@@ -1,76 +1,20 @@
 class
-    SV_LIST
-    
-create
-    make
+    QUICKSORT_HELPER
 
-feature {NONE} -- Initialization
+feature -- API
 
-    make
-            -- Initialize `sequence' to an empty list
-        note
-            status: creator
-        do
-            create array.make (0)
-        ensure
-            array.sequence.is_constant (0)
-            count = 0
-        end
-feature -- Constant parameters
-
-    max_count: INTEGER = 20
-            -- Maximum number of elements in the list.
-
-    N: INTEGER = 5
-            -- Boundary value for algorithm selection.
-
-feature -- Basic API
-
-    array: SIMPLE_ARRAY [INTEGER]
-            -- Sequence of integers represented as an array
-
-feature
-
-    count: INTEGER
-            -- Number of elements stored in `array'
-        note
-            status: functional
-        require
-            inv
-        do
-            -- implementation
-            Result := array.count
-        ensure
-            -- postconditions
-            Result = array.count
-        end
-
-feature -- Sorting
-
-    sort
-            -- Sort `array'
-        do
-            if count >= Max_count // 2 and has_small_elements (array) then
-                array := bucket_sort (array)
-            else
-                array := quick_sort (array, false, false, 0, 0)
-            end
-        ensure
-            is_sorted (array)
-            is_permutation (array.sequence, old array.sequence)
-        end
+    quick_sort (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
+		require
+            a.is_wrapped
+		do
+			Result := quick_sort_impl (a, false, false, 0, 0)
+		ensure
+            wrapped: Result.is_wrapped
+			sorted: is_sorted (Result)
+			permutation: is_permutation (Result.sequence, a.sequence)
+		end
 
 feature -- For use in specifications
-
-    has_small_elements (a: SIMPLE_ARRAY [INTEGER]): BOOLEAN
-            -- Are all elements of `a' small (i.e., in the range [-3N..3N])?
-        note
-            status: functional
-        require
-            a /= Void
-        do
-            Result := across a.sequence.domain as i all -3*N <= a.sequence[i.item] and a.sequence[i.item] <= 3*N end
-        end
 
     is_sorted (a: SIMPLE_ARRAY [INTEGER]): BOOLEAN
             -- Is `a' sorted?
@@ -79,9 +23,7 @@ feature -- For use in specifications
         require
             a /= Void
         do
-            -- Result := ??
-            Result := a.count > 1 implies across a.sequence.domain as i all (i.item < a.count) implies a.sequence [i.item] <= a.sequence [i.item + 1] end
-  --          Result := across 1 |..| (a.count-1) as idx all a [idx.item] <= a [idx.item + 1] end
+            Result := across a.sequence.domain as i all (i.item < a.count) implies a.sequence [i.item] <= a.sequence [i.item + 1] end
         end
 
     is_permutation (a, b: MML_SEQUENCE [INTEGER]): BOOLEAN
@@ -115,12 +57,16 @@ feature -- Sort implementations
                 j := Result.count + 1
             invariant
                 Result.is_wrapped
+                a.is_wrapped
+                b.is_wrapped
                 -- more loop invariants?
                 correct_insert_position: j = Result.count + 1
                 partial_result: Result.sequence = a.sequence + b.sequence.front (i-1)
+                
+                correct_b: i <= b.count and check_smaller implies b[i] <= upper
+                correct_b: i <= b.count and check_greater implies b[i] > lower
 
                 smaller: check_smaller implies across Result.sequence.domain as idx all Result [idx.item] <= upper end
-                
                 greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
             until
                 i > b.count
@@ -142,7 +88,7 @@ feature -- Sort implementations
             greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
         end
 
-    quick_sort (a: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
+    quick_sort_impl (a: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
             -- Sort `a' using Quicksort
         note
             status: impure
@@ -184,13 +130,9 @@ feature -- Sort implementations
                     
                 invariant
                     
-            -- note: in loop invariants, you should write X.wrapped for
-            -- each array X that the loop modifies
-                    a.is_wrapped
-                    left.is_wrapped
-                    right.is_wrapped
-                    pivot_arr.is_wrapped
-                    control.is_wrapped
+                    -- Note: in loop invariants, you should write X.wrapped for each array X that the loop modifies
+                    a.is_wrapped and left.is_wrapped and right.is_wrapped and pivot_arr.is_wrapped and control.is_wrapped
+                    
                     correct_pivot: a.sequence.first = pivot
 
                     stupid_i: i = control.count + 1
@@ -258,29 +200,23 @@ feature -- Sort implementations
                 variant
                     a.count - i
                 end
-                
-                check same_count: a.count = control.count end
-                check control_equal_a: across control.sequence.domain as across_idx all control [across_idx.item] =  a [across_idx.item] end end
-                check permutation: is_permutation (control.sequence, pivot_arr.sequence + left.sequence + right.sequence) end
-                
-                check smaller: across left.sequence.domain as idx all left [idx.item] <= pivot end end
-                check greater_equal: across right.sequence.domain as idx all right [idx.item] > pivot end end
+                -- Interestingly, this only works with the control sequence, but not with a.
+                -- check permutation: is_permutation (control.sequence, pivot_arr.sequence + left.sequence + right.sequence) end
 
-                left := quick_sort (left, True, check_greater, pivot, lower)
-                check smaller: across left.sequence.domain as idx all left[idx.item] <= pivot end end
-                check pivot_smaller: check_smaller implies pivot <= upper end
-                check greater: check_greater implies across left.sequence.domain as idx all left[idx.item] > lower end end
+                left := quick_sort_impl (left, True, check_greater, pivot, lower)
                 
+                -- Check ranges of values.
+                -- check smaller: across left.sequence.domain as idx all left[idx.item] <= pivot end end
+                -- check pivot_smaller: check_smaller implies pivot <= upper end
+                -- check greater: check_greater implies across left.sequence.domain as idx all left[idx.item] > lower end end
                 
-                right := quick_sort (right, check_smaller, True, upper, pivot)
-                check smaller: check_smaller implies across right.sequence.domain as idx all right[idx.item] <= upper end end
-                check pivot_greater: check_greater implies pivot > lower end
-                check greater: across right.sequence.domain as idx all right[idx.item] > pivot end end
+                right := quick_sort_impl (right, check_smaller, True, upper, pivot)
                 
-                check same_count: a.count = control.count end
-                check control_equal_a: across control.sequence.domain as across_idx all control [across_idx.item] =  a [across_idx.item] end end
-                check permutation: is_permutation (control.sequence, pivot_arr.sequence + left.sequence + right.sequence) end
-
+                -- Check ranges of values
+                -- check smaller: check_smaller implies across right.sequence.domain as idx all right[idx.item] <= upper end end
+                -- check pivot_greater: check_greater implies pivot > lower end
+                -- check greater: across right.sequence.domain as idx all right[idx.item] > pivot end end
+ 
                 check effectively_sorted:
                     is_sorted (left)
                     and across left.sequence.domain as idx all left [idx.item] <= pivot_arr [1] end 
@@ -297,42 +233,19 @@ feature -- Sort implementations
                 Result := concatenate_arrays (concatenate_arrays (left, pivot_arr, check_smaller, check_greater, upper, lower), right, check_smaller, check_greater, upper, lower)
                 
                 check assume: is_permutation (a.sequence, Result.sequence) end
-
             end
 
         ensure
-            Result.is_wrapped
-            Result.is_fresh
+            standard_stuff: Result.is_wrapped and Result.is_fresh
+            
+            -- The elements are the same.
             same_elementes: is_permutation (Result.sequence, a.sequence)
+            -- The result is sorted.
             sorted: is_sorted (Result)
             
-            
+            -- Helper contracts to proof the actual sort routine.
             smaller: check_smaller implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
             greater: check_greater implies across Result.sequence.domain as idx all Result[idx.item] > lower end
-            -- most postconditions?
         end
 
-    bucket_sort (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
-            -- Sort `a' using Bucket Sort
-        note
-            status: impure
-            explicit: contracts
-        require
-            a.is_wrapped
-            -- more preconditions?
-        local
-
-        do
-            -- note: in loop invariants, you should write X.wrapped for
-            -- each array X that the loop modifies
-        ensure
-            Result.is_wrapped
-            Result.is_fresh
-            -- more postconditions?
-        end
-
-invariant
-    array_not_void: attached array
-    owns_array: owns = [array]
-    array_size_restriction: 0 <= array.sequence.count and array.sequence.count <= Max_count
 end
