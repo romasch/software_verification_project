@@ -181,35 +181,6 @@ feature -- For use in specifications
         end
 
 feature -- Sort implementations
-    test_permutation_1 (s: MML_SEQUENCE [INTEGER]): like s
-        require
-            not_empty: not s.is_empty
-        do
-            Result := s.but_last.extended (s.last)
-        ensure
-            same_sequence: s ~ Result
-            permutation: is_permutation (s, Result)
-        end
-
-    test_permutation_2 (s: MML_SEQUENCE [INTEGER]): like s
-        require
-            not_empty: not s.is_empty
-        do
-            Result := s.but_first.extended (s.first)
-        ensure
-            exact: Result ~ s.tail (2).extended (s.first)
-            permutation: is_permutation (s, Result)
-        end
-
-    test_permutation_3 (s: MML_SEQUENCE [INTEGER]; v: INTEGER): like s
-        require
-            not_empty: not s.is_empty
-        do
-            Result := s.prepended (v)
-        ensure
---            exact: Result ~ s.tail (2).extended (s.first)
-            permutation: is_permutation (s.extended (v), Result)
-        end
 
     concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
             -- return the array comprising the elements of `a' followed by those of `b'
