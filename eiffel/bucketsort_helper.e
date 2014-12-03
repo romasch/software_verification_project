@@ -119,7 +119,7 @@ feature -- Sort implementations
             same_count: Result.count = input.count
         end
 
-feature {NONE} -- Stubs and helper features.
+feature {NONE} -- Stubs
 
     concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
             -- return the array comprising the elements of `a' followed by those of `b'
@@ -128,23 +128,8 @@ feature {NONE} -- Stubs and helper features.
             explicit: contracts
         require
             wrapped: a.is_wrapped and b.is_wrapped
-        local
-            i: INTEGER
         do
-            from
-                create Result.make_from_array (a)
-                i := 1
-            invariant
-                Result.is_wrapped
-                partial_result: Result.sequence = a.sequence + b.sequence.front (i-1)
-            until
-                i > b.count
-            loop
-                Result.force (b[i], Result.count+1)
-                i := i + 1
-            variant
-                b.count + 1 - i
-            end
+            create Result.make_empty
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
             same_sequence: Result.sequence = a.sequence + b.sequence

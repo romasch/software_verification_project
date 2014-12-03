@@ -41,36 +41,6 @@ feature -- For use in specifications
 
 feature {NONE} -- Sort implementation
 
-    concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
-            -- return the array comprising the elements of `a' followed by those of `b'
-        note
-            status: impure
-            explicit: contracts
-        require
-            wrapped: a.is_wrapped and b.is_wrapped
-        local
-            i: INTEGER
-        do
-            from
-                create Result.make_from_array (a)
-                i := 1
-            invariant
-                Result.is_wrapped
-                partial_result: Result.sequence = a.sequence + b.sequence.front (i-1)
-            until
-                i > b.count
-            loop
-                Result.force (b[i], Result.count+1)
-                i := i + 1
-            variant
-                b.count + 1 - i
-            end
-        ensure
-            default_stuff: Result.is_wrapped and Result.is_fresh
-            same_sequence: Result.sequence = a.sequence + b.sequence
-        end
-
-
     quick_sort_impl (a: SIMPLE_ARRAY [INTEGER]; lower, upper: INTEGER; check_lower_bound, check_upper_bound: BOOLEAN): SIMPLE_ARRAY [INTEGER]
             -- Sort `a' using Quicksort
         note
@@ -164,4 +134,21 @@ feature {NONE} -- Sort implementation
             upper_bound: check_upper_bound implies across Result.sequence.domain as idx all Result.sequence [idx.item] <= upper end
             lower_bound: check_lower_bound implies across Result.sequence.domain as idx all Result.sequence [idx.item] > lower end
         end
+
+feature {NONE} -- Stubs
+
+    concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
+            -- return the array comprising the elements of `a' followed by those of `b'
+        note
+            status: impure
+            explicit: contracts
+        require
+            wrapped: a.is_wrapped and b.is_wrapped
+        do
+            create Result.make_empty
+        ensure
+            default_stuff: Result.is_wrapped and Result.is_fresh
+            same_sequence: Result.sequence = a.sequence + b.sequence
+        end
+
 end
