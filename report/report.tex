@@ -44,38 +44,13 @@
 
 
 \section{Introduction}
+This report covers the implementation and verification of the two sort algorithms BucketSort \todoref and QuickSort \todoref.
+The tools used to verify the code are AutoProof \todoref and Boogie\todoref.
 
-\section{Eiffel}
-
-\subsection{Implementation}
-
-The implementation of the features in \lstinline!SV_LIST! was pretty straightforward.
-The problem however was, as I later realized, that the implementation wasn't always suited to verification.
-Therefore the relevant sort features like Quicksort and Bucketsort had to be adapted several types, 
-and the final implementation carries a lot of overhead to keep track of state needed for verification.
-
-\subsection{Specification}
-
-Due to my big experience with Eiffel programs, specifying pre- and postconditions was very easy.
-The only challenge were the sorting algorithms, where the specification should not just include that the array is sorted,
-but also that the final array contains the same elements as the input array.
-Otherwise one could just return a zero-filled value as a valid result.
-
-The verification phase however brought some unplanned changes again.
-I had to add some specifications, such as the number of elements staying the same during a sort, 
-as AutoProof wasn't able to infer that from the fact that all elements stay the same.
-
-\subsection{Verification}
-
-\textbf{General featuers:}
-The class SV_LIST was shipped with many small features such as \lstinline!extend! or \lstinline!count!.
-These were very easy to prove, often not even requiring any special additions besides pre- and postconditions.
-
-\textbf{Quicksort}
-
-\textbf{Bucketsort}
-
-\textbf{Array concatenation}
+The structure of the report follows the chronological order in which the tasks were completed.
+The first section deals with the Boogie verification of the Quicksort algorithm.
+Following that is a section about the AutoProof solution.
+The last section compares the two tools and draws conclusions.
 
 \section {Boogie}
 
@@ -102,11 +77,77 @@ The solution was therefore to keep track of these values explicitly.
 I had to extend the interface of the quicksort routine to get the boundary values and add preconditions, 
 loop invariants and postconditions to make sure everything is maintained.
 
+
+\section{Eiffel}
+
+\subsection{Implementation}
+
+The implementation of the features in \lstinline!SV_LIST! was pretty straightforward.
+The problem however was, as I later realized, that the implementation wasn't always suited to verification.
+Therefore the relevant sort features like Quicksort and Bucketsort had to be adapted several types, 
+and the final implementation carries a lot of overhead to keep track of state needed for verification.
+
+\subsection{Specification}
+
+Due to my experience with Eiffel programs, specifying pre- and postconditions was very easy.
+The only challenge were the sorting algorithms, where the specification should not just include that the array is sorted,
+but also that the final array contains the same elements as the input array.
+Otherwise one could just return a zero-filled array as a valid result.
+
+The verification phase however brought some unplanned changes again.
+I had to add some specifications, such as the number of elements staying the same during a sort, 
+as AutoProof wasn't able to infer that from the fact that the output is a permutation of the input.
+
+\subsection{Verification}
+
+\textbf{General featuers}
+The class \lstinline!SV_LIST! was shipped with many small features such as \lstinline!extend! or \lstinline!count!.
+These were very easy to prove, often not even requiring any further specification besides pre- and postconditions.
+
+\textbf{Quicksort}
+The verification of Quicksort in AutoProof was very tough.
+In fact during my first attempt I stopped with the AutoProof solution and started working on Boogie.
+Thanks to the Boogie solution I then had a slightly better idea what was going on in the background.
+
+The main problem was that the verifier had its own peculiar ideas about what is a permutation and what is not.
+This is something which is still not resolved in the final solution.
+While I was able to verify that the input is \emph{equal} to a local array, and the local array is a permutation of the sorted array, 
+AutoProof cannot draw the conclusion that therefore the sorted array is a permutation of the input array.
+This was the point where I gave up and added an assume clause.
+
+I also encountered the same problems in the Eiffel as in Boogie, like the problem with minimum/maximum staying the same in a permtuted array.
+As I already identified the problems earlier in Boogie I just implemented the same workarounds in Eiffel.
+
+\textbf{Bucketsort}
+
+\textbf{Array concatenation}
+
 \section {Conclusion}
 
-\subsection{Comparison of AutoProof and Boogie}
+During this project I've used both AutoProof and Boogie to verify different sorting algorithm.
+In my opinion, Boogie is a bit easier to use, because \todo{a reason}.
 
-\addcontentsline{toc}{section}{References}
+AutoProof on the other hand has a higher level of abstraction.
+However I think that precisely this abstraction makes it very hard to use AutoProof, 
+because when something goes wrong you often have no idea and no hint about what's the problem.
+Another problem which mostly happened in AutoProof is that I often got a timeout error, which can be very frustrating.
+
+An advantage of AutoProof on the other hand is that it nicely integrates into the Eiffel programming language.
+This allows to at least partially prove some classes and features in a convenient and mostly automatic way, 
+and use traditional testing for features that could not be verified.
+
+In both tools there's very little help provided when debugging a failed assertion.
+Getting it to verify therefore often involves hours of trial-and-error programming.
+I think for a static verifier to succeed in practice it needs at least to provide a counter example 
+or to say why it couldn't verify a statement, but this might be impossible to implement.
+
+In my opinion static verification of programs is not usable in practice.
+It can be very hard to prove even simple programs and checks where programmers can easily reason that a program is correct.
+Furthermore, there's the problem that the specification itself may be wrong, and the verifier happily verifies a buggy program.
+I think time and money is better invested into rigorous testing and traditional mechanisms to ensure high quality, such as code reviews.
+
+\todos
+
 \begin{flushleft}
 {{{
 \bibliographystyle {plain}
