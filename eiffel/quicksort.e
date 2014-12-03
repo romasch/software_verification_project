@@ -1,5 +1,5 @@
 class
-    QUICKSORT_HELPER
+    QUICKSORT
 
 feature -- API
 

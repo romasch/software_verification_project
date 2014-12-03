@@ -219,7 +219,7 @@ feature -- Sort implementations
         require
             a.is_wrapped
         do
-            -- see quicksort_helper.e.
+            -- see quicksort.e.
             create Result.make_empty
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
@@ -237,7 +237,7 @@ feature -- Sort implementations
             input.is_wrapped
             small_elems: has_small_elements (input)
         do
-            -- see bucketsort_helper.e
+            -- see bucketsort.e
             create Result.make_empty
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh

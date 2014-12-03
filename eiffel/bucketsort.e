@@ -1,5 +1,5 @@
 class
-    BUCKETSORT_HELPER
+    BUCKETSORT
 
 feature -- Constant parameters
 
