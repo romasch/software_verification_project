@@ -233,25 +233,130 @@ feature -- Sort implementations
             same_count: Result.count = a.count
         end
 
-    bucket_sort (a: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
+    bucket_sort (input: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
             -- Sort `a' using Bucket Sort
         note
             status: impure
             explicit: contracts
         require
-            a.is_wrapped
+            input.is_wrapped
+            small_elems: has_small_elements (input)
             -- more preconditions?
         local
+            left, middle, right: SIMPLE_ARRAY [INTEGER]
+            control: SIMPLE_ARRAY [INTEGER]
+
+            index: INTEGER
+
+            current_value: INTEGER
 
         do
-            create Result.make_empty
+            from
+                create left.make_empty
+                create middle.make_empty
+                create right.make_empty
+                create control.make_empty
+
+                index := 1
+            invariant
+                wrapped: left.is_wrapped and middle.is_wrapped and right.is_wrapped and control.is_wrapped
+                count_correct: index = control.count + 1 and index = left.count + middle.count + right.count + 1
+                in_bounds: 1 <= index and index <= input.count+1
+
+                -- Sort-related invariants
+                correct_split_left: across left.sequence.domain as i all -3*N <= left [i.item] and left [i.item] < -N end
+                correct_split_middle: across middle.sequence.domain as i all -N <= middle [i.item] and middle [i.item] <= N end
+                correct_split_right: across right.sequence.domain as i all N < right [i.item] and right [i.item] <= 3*N  end
+
+                -- Permutation-related invariants
+                permutation: is_permutation (left.sequence + middle.sequence + right.sequence, control.sequence)
+                same_array: across control.sequence.domain as i all control [i.item] =  input [i.item] end
+
+
+            until
+                index > input.count
+            loop
+                current_value := input [index]
+                control.force (current_value, control.count+1)
+
+                if current_value < -N then
+                    left.force (current_value, left.count+1)
+                elseif current_value <= N then
+                    middle.force (current_value, middle.count+1)
+                else
+                    right.force (current_value, right.count+1)
+                end
+                index := index + 1
+            variant
+                input.count + 1 - index
+            end
+
+            left := quick_sort_impl (left, True, True, -N-1, -3*N-1)
+            middle := quick_sort_impl (middle, True, True, N, -N-1)
+            right := quick_sort_impl (right, True, True, 3*N, N)
+
+            check correct_split_left: across left.sequence.domain as i all -3*N <= left [i.item] and left [i.item] < -N end end
+            check correct_split_middle: across middle.sequence.domain as i all -N <= middle [i.item] and middle [i.item] <= N end end
+            check correct_split_right: across right.sequence.domain as i all N < right [i.item] and right [i.item] <= 3*N  end end
+
+            check permutation: is_permutation (left.sequence + middle.sequence + right.sequence, control.sequence) end
+
+                        -- Check that it's sorted. Due to the postcondition that verifies now this is no longer necessary.
+            check is_in_fact_sorted:
+                is_sorted (left)
+                and is_sorted (middle)
+                and is_sorted (right)
+            end
+
+            -- Check that the left+pivot+right is a correct permutation.
+            -- Note: At this point, AutoProof can proof that `control' is a permutation to (left+middle+right).
+            -- It can also proof that `control' is equal to `input'.
+            -- However, it fails to infer that therefore `input' is a permutation of the combined array.
+            check is_in_fact_permutation:
+                is_permutation (control.sequence, left.sequence + middle.sequence + right.sequence)
+                and input.count = control.count
+                and across control.sequence.domain as i all control [i.item] =  input [i.item] end
+            end
+
+            check why_not: is_permutation (control.sequence, input.sequence) end
+
+            Result := concatenate_arrays (concatenate_arrays (left, middle), right)
+            --create Result.make_empty
             -- note: in loop invariants, you should write X.wrapped for
             -- each array X that the loop modifies
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
             sorted: is_sorted (Result)
-            permutation: is_permutation (Result.sequence, a.sequence)
+            permutation: is_permutation (Result.sequence, input.sequence)
+            same_count: Result.count = input.count
+        end
+
+    quick_sort_impl (a: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
+            -- Sort `a' using Quicksort
+        note
+            status: impure
+            explicit: contracts
+        require
+            a.is_wrapped
+            decreases(a.sequence)
+            modify([])
+
+            smaller: check_smaller implies across a.sequence.domain as idx all a[idx.item] <= upper end
+            greater: check_greater implies across a.sequence.domain as idx all a[idx.item] > lower end
+        do
+            create Result.make_empty
+        ensure
+            default_stuff: Result.is_wrapped and Result.is_fresh
+
+            -- The elements are the same.
+            same_elementes: is_permutation (Result.sequence, a.sequence)
             same_count: Result.count = a.count
+            -- The result is sorted.
+            sorted: is_sorted (Result)
+
+            -- Helper contracts to proof the actual sort routine.
+            smaller: check_smaller implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
+            greater: check_greater implies across Result.sequence.domain as idx all Result[idx.item] > lower end
         end
 
 invariant
@@ -259,4 +364,3 @@ invariant
     owns_array: owns = [array]
     array_size_restriction: 0 <= array.sequence.count and array.sequence.count <= Max_count
 end
-
