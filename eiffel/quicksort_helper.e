@@ -62,30 +62,31 @@ feature {NONE} -- Sort implementation
                 j := Result.count + 1
             invariant
                 Result.is_wrapped
-                a.is_wrapped
-                b.is_wrapped
+--                a.is_wrapped
+--                b.is_wrapped
                 -- more loop invariants?
                 correct_insert_position: j = Result.count + 1
                 partial_result: Result.sequence = a.sequence + b.sequence.front (i-1)
 
-                correct_b: i <= b.count and check_smaller implies b[i] <= upper
-                correct_b: i <= b.count and check_greater implies b[i] > lower
+                i_in_bounds: 1 <= i and i <= b.count + 1
+                
+                -- Why do we need to repeat the precondition? b does not get modified in the loop...
+                smaller: check_smaller implies across b.sequence.domain as idx all b[idx.item] <= upper end
+                greater: check_greater implies across b.sequence.domain as idx all b[idx.item] > lower end
 
                 smaller: check_smaller implies across Result.sequence.domain as idx all Result [idx.item] <= upper end
                 greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
             until
                 i > b.count
             loop
-                Result.force (b.item (i), j)
+                Result.force (b[i], j)
                 i := i + 1
                 j := j + 1
             end
         ensure
             Result.is_wrapped
             Result.is_fresh
-            -- more postconditions?
             Result.sequence = a.sequence + b.sequence
-            --perm: is_permutation (Result.sequence, a.sequence + b.sequence)
             same_elems: across a.sequence.domain as idx all Result [idx.item] = a[idx.item] end
             same_elems_2: across b.sequence.domain as idx all Result [idx.item + a.count] = b[idx.item] end
 
