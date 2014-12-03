@@ -90,6 +90,9 @@ feature {NONE} -- Sort implementation
             same_elems: across a.sequence.domain as idx all Result [idx.item] = a[idx.item] end
             same_elems_2: across b.sequence.domain as idx all Result [idx.item + a.count] = b[idx.item] end
 
+
+            sorted: ((is_sorted (a) and is_sorted (b) and b.sequence.count > 0) and then (across a.sequence.domain as idx all a.sequence.item(idx.item) <= b.sequence.item(1) end)) implies is_sorted (Result)
+
             smaller: check_smaller implies across Result.sequence.domain as idx all Result [idx.item] <= upper end
             greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
         end
