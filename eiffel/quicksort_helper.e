@@ -41,18 +41,13 @@ feature -- For use in specifications
 
 feature {NONE} -- Sort implementation
 
-    concatenate_arrays_with_bounds (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]; lower_bound, upper_bound: INTEGER; check_lower_bound, check_upper_bound: BOOLEAN): SIMPLE_ARRAY [INTEGER]
+    concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
             -- return the array comprising the elements of `a' followed by those of `b'
         note
             status: impure
             explicit: contracts
         require
             wrapped: a.is_wrapped and b.is_wrapped
-            -- Boundary checks:
-            lower_bound: check_lower_bound implies across a.sequence.domain as idx all a.sequence [idx.item] > lower_bound end
-            lower_bound: check_lower_bound implies across b.sequence.domain as idx all b.sequence [idx.item] > lower_bound end
-            upper_bound: check_upper_bound implies across a.sequence.domain as idx all a.sequence [idx.item] <= upper_bound end
-            upper_bound: check_upper_bound implies across b.sequence.domain as idx all b.sequence [idx.item] <= upper_bound end
         local
             i: INTEGER
         do
@@ -60,25 +55,21 @@ feature {NONE} -- Sort implementation
                 create Result.make_from_array (a)
                 i := 1
             invariant
-                wrapped: Result.is_wrapped
+                Result.is_wrapped
                 partial_result: Result.sequence = a.sequence + b.sequence.front (i-1)
-                lower_bound: check_lower_bound implies across Result.sequence.domain as idx all Result.sequence [idx.item] > lower_bound end
-                upper_bound: check_upper_bound implies across Result.sequence.domain as idx all Result.sequence [idx.item] <= upper_bound end
             until
                 i > b.count
             loop
-                Result.force (b[i], Result.count + 1)
+                Result.force (b[i], Result.count+1)
                 i := i + 1
             variant
                 b.count + 1 - i
             end
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
-            same_elements: Result.sequence = a.sequence + b.sequence
-            -- Boundary checks:
-            lower_bound: check_lower_bound implies across Result.sequence.domain as idx all Result [idx.item] > lower_bound end
-            upper_bound: check_upper_bound implies across Result.sequence.domain as idx all Result [idx.item] <= upper_bound end
+            same_sequence: Result.sequence = a.sequence + b.sequence
         end
+
 
     quick_sort_impl (a: SIMPLE_ARRAY [INTEGER]; lower, upper: INTEGER; check_lower_bound, check_upper_bound: BOOLEAN): SIMPLE_ARRAY [INTEGER]
             -- Sort `a' using Quicksort
@@ -159,8 +150,8 @@ feature {NONE} -- Sort implementation
                 right := quick_sort_impl (right, pivot, upper, True, check_upper_bound)
 
                 -- Concatenate the arrays.
-                intermediate := concatenate_arrays_with_bounds (left, pivot_array, lower, upper, check_lower_bound, check_upper_bound)
-                Result := concatenate_arrays_with_bounds (intermediate, right, lower, upper, check_lower_bound, check_upper_bound)
+                intermediate := concatenate_arrays (left, pivot_array)
+                Result := concatenate_arrays (intermediate, right)
             end
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
