@@ -11,7 +11,7 @@ feature -- API
         require
             a.is_wrapped
         do
-            Result := quick_sort_impl (a, false, false, 0, 0)
+            Result := quick_sort_impl (a, 0, 0, false, false)
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
             sorted: is_sorted (Result)
@@ -41,63 +41,46 @@ feature -- For use in specifications
 
 feature {NONE} -- Sort implementation
 
-    concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
+    concatenate_arrays_with_bounds (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]; lower_bound, upper_bound: INTEGER; check_lower_bound, check_upper_bound: BOOLEAN): SIMPLE_ARRAY [INTEGER]
             -- return the array comprising the elements of `a' followed by those of `b'
         note
             status: impure
             explicit: contracts
         require
-            a.is_wrapped
-            b.is_wrapped
-            smaller: check_smaller implies across a.sequence.domain as idx all a[idx.item] <= upper end
-            greater: check_greater implies across a.sequence.domain as idx all a[idx.item] > lower end
-            smaller: check_smaller implies across b.sequence.domain as idx all b[idx.item] <= upper end
-            greater: check_greater implies across b.sequence.domain as idx all b[idx.item] > lower end
+            wrapped: a.is_wrapped and b.is_wrapped
+            -- Boundary checks:
+            lower_bound: check_lower_bound implies across a.sequence.domain as idx all a.sequence [idx.item] > lower_bound end
+            lower_bound: check_lower_bound implies across b.sequence.domain as idx all b.sequence [idx.item] > lower_bound end
+            upper_bound: check_upper_bound implies across a.sequence.domain as idx all a.sequence [idx.item] <= upper_bound end
+            upper_bound: check_upper_bound implies across b.sequence.domain as idx all b.sequence [idx.item] <= upper_bound end
         local
-            i, j: INTEGER
+            i: INTEGER
         do
-            create Result.make_from_array (a)
             from
+                create Result.make_from_array (a)
                 i := 1
-                j := Result.count + 1
             invariant
-                Result.is_wrapped
---                a.is_wrapped
---                b.is_wrapped
-                -- more loop invariants?
-                correct_insert_position: j = Result.count + 1
+                wrapped: Result.is_wrapped
                 partial_result: Result.sequence = a.sequence + b.sequence.front (i-1)
-
-                i_in_bounds: 1 <= i and i <= b.count + 1
-                
-                -- Why do we need to repeat the precondition? b does not get modified in the loop...
-                smaller: check_smaller implies across b.sequence.domain as idx all b[idx.item] <= upper end
-                greater: check_greater implies across b.sequence.domain as idx all b[idx.item] > lower end
-
-                smaller: check_smaller implies across Result.sequence.domain as idx all Result [idx.item] <= upper end
-                greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
+                lower_bound: check_lower_bound implies across Result.sequence.domain as idx all Result.sequence [idx.item] > lower_bound end
+                upper_bound: check_upper_bound implies across Result.sequence.domain as idx all Result.sequence [idx.item] <= upper_bound end
             until
                 i > b.count
             loop
-                Result.force (b[i], j)
+                Result.force (b[i], Result.count + 1)
                 i := i + 1
-                j := j + 1
+            variant
+                b.count + 1 - i
             end
         ensure
-            Result.is_wrapped
-            Result.is_fresh
-            Result.sequence = a.sequence + b.sequence
-            same_elems: across a.sequence.domain as idx all Result [idx.item] = a[idx.item] end
-            same_elems_2: across b.sequence.domain as idx all Result [idx.item + a.count] = b[idx.item] end
-
-
-            sorted: ((is_sorted (a) and is_sorted (b) and b.sequence.count > 0) and then (across a.sequence.domain as idx all a.sequence.item(idx.item) <= b.sequence.item(1) end)) implies is_sorted (Result)
-
-            smaller: check_smaller implies across Result.sequence.domain as idx all Result [idx.item] <= upper end
-            greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
+            default_stuff: Result.is_wrapped and Result.is_fresh
+            same_elements: Result.sequence = a.sequence + b.sequence
+            -- Boundary checks:
+            lower_bound: check_lower_bound implies across Result.sequence.domain as idx all Result [idx.item] > lower_bound end
+            upper_bound: check_upper_bound implies across Result.sequence.domain as idx all Result [idx.item] <= upper_bound end
         end
 
-    quick_sort_impl (a: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
+    quick_sort_impl (a: SIMPLE_ARRAY [INTEGER]; lower, upper: INTEGER; check_lower_bound, check_upper_bound: BOOLEAN): SIMPLE_ARRAY [INTEGER]
             -- Sort `a' using Quicksort
         note
             status: impure
@@ -107,11 +90,12 @@ feature {NONE} -- Sort implementation
             decreases(a.sequence)
             modify([])
 
-            smaller: check_smaller implies across a.sequence.domain as idx all a[idx.item] <= upper end
-            greater: check_greater implies across a.sequence.domain as idx all a[idx.item] > lower end
+            upper_bound: check_upper_bound implies across a.sequence.domain as idx all a[idx.item] <= upper end
+            lower_bound: check_lower_bound implies across a.sequence.domain as idx all a[idx.item] > lower end
         local
             left, right: SIMPLE_ARRAY [INTEGER]
             pivot_arr, control: SIMPLE_ARRAY [INTEGER]
+            intermediate: SIMPLE_ARRAY [INTEGER]
             pivot: INTEGER
             i: INTEGER
             value: INTEGER
@@ -145,14 +129,15 @@ feature {NONE} -- Sort implementation
 
                     -- Invariants related to proving is_sorted.
                     correct_split_left: across left.sequence.domain as z all left [z.item] <= pivot end
-                    -- check_upper_bound: check_smaller implies pivot <= upper -- can be inferred.
+                    -- check_upper_bound: check_upper_bound implies pivot <= upper -- can be inferred.
                     correct_split_right: across right.sequence.domain as y all right [y.item] > pivot end
-                    -- check_lower_bound: check_greater implies pivot > lower -- can be inferred.
-                    check_lower_bound: check_greater implies across left.sequence.domain as idx all left[idx.item] > lower end
-                    check_upper_bound: check_smaller implies across right.sequence.domain as idx all right[idx.item] <= upper end
+                    -- check_lower_bound: check_lower_bound implies pivot > lower -- can be inferred.
+                    check_lower_bound: check_lower_bound implies across left.sequence.domain as idx all left[idx.item] > lower end
+                    check_upper_bound: check_upper_bound implies across right.sequence.domain as idx all right[idx.item] <= upper end
 
                     -- Invariants related to proving is_permutation.
                     permutation: is_permutation (control.sequence, pivot_arr.sequence + left.sequence + right.sequence)
+                    same_array_2: control.sequence ~ a.sequence.front (i-1)
                     same_array: across control.sequence.domain as across_idx all control [across_idx.item] =  a [across_idx.item] end
                 until
                     i > a.count
@@ -172,9 +157,9 @@ feature {NONE} -- Sort implementation
                 -- Interestingly, this check only works with the control sequence, but not with a.
                 check permutation: is_permutation (control.sequence, pivot_arr.sequence + left.sequence + right.sequence) end
 
-                left := quick_sort_impl (left, True, check_greater, pivot, lower)
+                left := quick_sort_impl (left, lower, pivot, check_lower_bound, True)
 
-                right := quick_sort_impl (right, check_smaller, True, upper, pivot)
+                right := quick_sort_impl (right, pivot, upper, True, check_upper_bound)
 
                 -- Check that it's sorted. Due to the postcondition that verifies now this is no longer necessary.
 --                check is_in_fact_sorted:
@@ -194,10 +179,14 @@ feature {NONE} -- Sort implementation
                     and across control.sequence.domain as across_idx all control [across_idx.item] =  a [across_idx.item] end
                 end
 
-                Result := concatenate_arrays (concatenate_arrays (left, pivot_arr, check_smaller, check_greater, upper, lower), right, check_smaller, check_greater, upper, lower)
+                -- Check needed for permutation proof.
+                check same_array: control.sequence ~ a.sequence end
+
+                intermediate := concatenate_arrays_with_bounds (left, pivot_arr, lower, upper, check_lower_bound, check_upper_bound )
+                Result := concatenate_arrays_with_bounds (intermediate, right, lower, upper, check_lower_bound, check_upper_bound )
 
                 -- Cheating here because is_permutation just behaves too randomly to really work with it.
-                check assume: is_permutation (a.sequence, Result.sequence) end
+                --check assume: is_permutation (a.sequence, Result.sequence) end
             end
 
         ensure
@@ -210,7 +199,7 @@ feature {NONE} -- Sort implementation
             sorted: is_sorted (Result)
 
             -- Helper contracts to proof the actual sort routine.
-            smaller: check_smaller implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
-            greater: check_greater implies across Result.sequence.domain as idx all Result[idx.item] > lower end
+            upper_bound: check_upper_bound implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
+            lower_bound: check_lower_bound implies across Result.sequence.domain as idx all Result[idx.item] > lower end
         end
 end

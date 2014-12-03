@@ -51,7 +51,7 @@ feature -- Sort implementations
             small_elems: has_small_elements (input)
         local
             left, middle, right: SIMPLE_ARRAY [INTEGER]
-            control, left_middle: SIMPLE_ARRAY [INTEGER]
+            control: SIMPLE_ARRAY [INTEGER]
 
             index: INTEGER
             current_value: INTEGER
@@ -79,8 +79,6 @@ feature -- Sort implementations
                 -- Permutation-related invariants
                 permutation: is_permutation (left.sequence + middle.sequence + right.sequence, control.sequence)
                 same_array: across control.sequence.domain as i all control.sequence.item(i.item) =  input.sequence.item(i.item) end
-
-
             until
                 index > input.count
             loop
@@ -105,29 +103,15 @@ feature -- Sort implementations
             right := quick_sort_impl (right, True, True, 3*boundary, boundary)
 
             -- Check that the ranges are still the same.
-            -- This is apparently necessary, otherwise some axiom will not be triggered.
+            -- This is apparently necessary to trigger an axiom.
             check correct_split_left: across left.sequence.domain as i all -3*boundary <= left.sequence.item (i.item) and left.sequence.item (i.item) < -boundary end end
             check correct_split_middle: across middle.sequence.domain as i all -boundary <= middle.sequence.item (i.item)  and middle.sequence.item (i.item)  <= boundary end end
             check correct_split_right: across right.sequence.domain as i all boundary < right.sequence.item (i.item)  and right.sequence.item (i.item)  <= 3*boundary  end end
 
-
-            -- Checks needed for permutation proof.
-            check permutation: is_permutation (left.sequence + middle.sequence + right.sequence, control.sequence) end
+            -- Check needed for permutation proof.
             check control.sequence ~ input.sequence end
 
---            check middle.sequence.count > 0 implies across left.sequence.domain as idx all left.sequence.item(idx.item) < middle.sequence.item (1) end end
-
-            -- Concatenate arrays.
-            -- left_middle := concatenate_arrays (left, middle, True, True, boundary, -3*boundary-1)
-            left_middle := concatenate_arrays (left, middle, False, False, 0, 0)
-
-            -- Note: Most of these checks are necessary to trigger the right axioms.
---            check sorted: is_sorted (left_middle) end
---            check correct_split_right: across right.sequence.domain as i all boundary < right [i.item] end end
---            check boundary_correct: across left_middle.sequence.domain as i all left_middle [i.item] <= boundary end end
---            check disjoint_range: right.count > 0 implies (across left_middle.sequence.domain as i all left_middle[i.item] < right[1] end) end
-
-            Result := concatenate_arrays (left_middle, right, True, True, 3*boundary, -3*boundary-1)
+            Result := concatenate_arrays (concatenate_arrays (left, middle), right)
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
             sorted: is_sorted (Result)
@@ -135,38 +119,35 @@ feature -- Sort implementations
             same_count: Result.count = input.count
         end
 
-feature {NONE} -- Stubs
+feature {NONE} -- Stubs and helper features.
 
-    concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
+    concatenate_arrays (a: SIMPLE_ARRAY [INTEGER] b: SIMPLE_ARRAY [INTEGER]): SIMPLE_ARRAY [INTEGER]
             -- return the array comprising the elements of `a' followed by those of `b'
         note
             status: impure
             explicit: contracts
         require
-            a.is_wrapped
-            b.is_wrapped
-            smaller: check_smaller implies across a.sequence.domain as idx all a[idx.item] <= upper end
-            greater: check_greater implies across a.sequence.domain as idx all a[idx.item] > lower end
-            smaller: check_smaller implies across b.sequence.domain as idx all b[idx.item] <= upper end
-            greater: check_greater implies across b.sequence.domain as idx all b[idx.item] > lower end
+            wrapped: a.is_wrapped and b.is_wrapped
+        local
+            i: INTEGER
         do
-            --create Result.make_empty
-            create Result.init (a.sequence + b.sequence)
+            from
+                create Result.make_from_array (a)
+                i := 1
+            invariant
+                Result.is_wrapped
+                partial_result: Result.sequence = a.sequence + b.sequence.front (i-1)
+            until
+                i > b.count
+            loop
+                Result.force (b[i], Result.count+1)
+                i := i + 1
+            variant
+                b.count + 1 - i
+            end
         ensure
-            Result.is_wrapped
-            Result.is_fresh
-            -- more postconditions?
+            default_stuff: Result.is_wrapped and Result.is_fresh
             same_sequence: Result.sequence = a.sequence + b.sequence
---             sorted: is_sorted (a) and is_sorted (b) and b.count > 0 and then (across a as i all a[i.item] <= b[1] end) implies is_sorted (Result)
-            --perm: is_permutation (Result.sequence, a.sequence + b.sequence)
---            same_elems: across a.sequence.domain as idx all Result [idx.item] = a[idx.item] end
---            same_elems_2: across b.sequence.domain as idx all Result [idx.item + a.count] = b[idx.item] end
-
-
---            sorted: ((is_sorted (a) and is_sorted (b) and b.sequence.count > 0) and then (across a.sequence.domain as idx all a.sequence.item(idx.item) <= b.sequence.item(1) end)) implies is_sorted (Result)
-
---            smaller: check_smaller implies across Result.sequence.domain as idx all Result [idx.item] <= upper end
---            greater: check_greater implies across Result.sequence.domain as idx all Result [idx.item] > lower end
         end
 
 
@@ -179,20 +160,17 @@ feature {NONE} -- Stubs
             a.is_wrapped
             decreases(a.sequence)
             modify([])
-
             smaller: check_smaller implies across a.sequence.domain as idx all a[idx.item] <= upper end
             greater: check_greater implies across a.sequence.domain as idx all a[idx.item] > lower end
         do
             create Result.make_empty
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
-
             -- The elements are the same.
             same_elementes: is_permutation (Result.sequence, a.sequence)
             same_count: Result.count = a.count
             -- The result is sorted.
             sorted: is_sorted (Result)
-
             -- Helper contracts to proof the actual sort routine.
             smaller: check_smaller implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
             greater: check_greater implies across Result.sequence.domain as idx all Result[idx.item] > lower end
