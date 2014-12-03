@@ -98,9 +98,9 @@ feature -- Sort implementations
             end
 
             -- Call quicksort to sort the individual buckets.
-            left := quick_sort_impl (left, True, True, -boundary-1, -3*boundary-1)
-            middle := quick_sort_impl (middle, True, True, boundary, -boundary-1)
-            right := quick_sort_impl (right, True, True, 3*boundary, boundary)
+            left := quick_sort_impl (left, -3*boundary-1, -boundary-1, True, True)
+            middle := quick_sort_impl (middle, -boundary-1, boundary, True, True)
+            right := quick_sort_impl (right, boundary, 3* boundary, True, True)
 
             -- Check that the ranges are still the same.
             -- This is apparently necessary to trigger an axiom.
@@ -150,8 +150,7 @@ feature {NONE} -- Stubs and helper features.
             same_sequence: Result.sequence = a.sequence + b.sequence
         end
 
-
-    quick_sort_impl (a: SIMPLE_ARRAY [INTEGER]; check_smaller, check_greater: BOOLEAN; upper, lower: INTEGER): SIMPLE_ARRAY [INTEGER]
+    quick_sort_impl (a: SIMPLE_ARRAY [INTEGER]; lower, upper: INTEGER; check_lower_bound, check_upper_bound: BOOLEAN): SIMPLE_ARRAY [INTEGER]
             -- Sort `a' using Quicksort
         note
             status: impure
@@ -160,20 +159,23 @@ feature {NONE} -- Stubs and helper features.
             a.is_wrapped
             decreases(a.sequence)
             modify([])
-            smaller: check_smaller implies across a.sequence.domain as idx all a[idx.item] <= upper end
-            greater: check_greater implies across a.sequence.domain as idx all a[idx.item] > lower end
+
+            upper_bound: check_upper_bound implies across a.sequence.domain as idx all a[idx.item] <= upper end
+            lower_bound: check_lower_bound implies across a.sequence.domain as idx all a[idx.item] > lower end
         do
             create Result.make_empty
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
+
             -- The elements are the same.
             same_elementes: is_permutation (Result.sequence, a.sequence)
             same_count: Result.count = a.count
             -- The result is sorted.
             sorted: is_sorted (Result)
+
             -- Helper contracts to proof the actual sort routine.
-            smaller: check_smaller implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
-            greater: check_greater implies across Result.sequence.domain as idx all Result[idx.item] > lower end
+            upper_bound: check_upper_bound implies across Result.sequence.domain as idx all Result[idx.item] <= upper end
+            lower_bound: check_lower_bound implies across Result.sequence.domain as idx all Result[idx.item] > lower end
         end
 
 invariant
