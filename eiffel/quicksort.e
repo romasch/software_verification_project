@@ -51,6 +51,7 @@ feature {NONE} -- Sort implementation
             decreases(a.sequence)
             modify([])
 
+            -- Helper contracts for boundary checks.
             upper_bound: check_upper_bound implies across a.sequence.domain as idx all a.sequence [idx.item] <= upper end
             lower_bound: check_lower_bound implies across a.sequence.domain as idx all a.sequence [idx.item] > lower end
         local
@@ -89,6 +90,8 @@ feature {NONE} -- Sort implementation
                     -- Invariants related to proving is_sorted.
                     correct_split_left: across left.sequence.domain as z all left [z.item] <= pivot end -- Note also that pivot <= upper.
                     correct_split_right: across right.sequence.domain as y all right [y.item] > pivot end -- Note also that pivot > lower.
+
+                    -- Helper contracts for boundary checks.
                     check_lower_bound: check_lower_bound implies across left.sequence.domain as idx all left.sequence [idx.item] > lower end
                     check_upper_bound: check_upper_bound implies across right.sequence.domain as idx all right.sequence [idx.item] <= upper end
 
@@ -130,7 +133,7 @@ feature {NONE} -- Sort implementation
             same_count: Result.count = a.count
             -- The result is sorted.
             sorted: is_sorted (Result)
-            -- Helper contracts to proof the actual sort routine.
+            -- Helper contracts for boundary checks.
             upper_bound: check_upper_bound implies across Result.sequence.domain as idx all Result.sequence [idx.item] <= upper end
             lower_bound: check_lower_bound implies across Result.sequence.domain as idx all Result.sequence [idx.item] > lower end
         end

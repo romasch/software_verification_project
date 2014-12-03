@@ -100,32 +100,52 @@ as AutoProof wasn't able to infer that from the fact that the output is a permut
 
 \subsection{Verification}
 
-\textbf{General featuers}
+\subsubsection{General featuers}
 The class \lstinline!SV_LIST! was shipped with many small features such as \lstinline!extend! or \lstinline!count!.
 These were very easy to prove, often not even requiring any further specification besides pre- and postconditions.
 
-\textbf{Quicksort}
-The verification of Quicksort in AutoProof was very tough.
+\subsubsection{Quicksort}
+
+The Quicksort algorithm is fully verified in AutoProof.
+Besides prooving that the output is sorted, I was also able to prove that the final result is a permutation of the input array.
+
+The algorithm selects the first element in the input as a pivot and then distributes the remaining elements into two arrays (\lstinline!left! and \lstinline!right!).
+It then recursively calls \lstinline!quick_sort! on both elements and merges the two results.
+
+At the core of the verification for Quicksort are the loop invariants during the split phase.
+There are two groups of invariants.
+The first group is required to verify the \lstinline!sorted! postcondition.
+It basically states that all elements smaller than the pivot element are in the \lstinline!left! array, whereas the other ones are in the \lstinline!right! array.
+
+The second group of invariants keeps track of the \lstinline!permutation! postcondition.
+To be able to verify permutation I had to introduce a new array \lstinline!control!, where all elements from the input are just inserted one by one.
+The invariants then state that the concatenation of \lstinline!left!, \lstinline!right! and the pivot element is a permutation of the \lstinline!control! array,
+and that the \lstinline!control! array will eventually be equal to the input array.
+
+The main problem that I had during development was that AutoProof had some peculiar ideas about what could be a permutation.
+At some point I was able to verify that the input array is \emph{equal} to a local array, and the local array is a permutation of the sorted array.
+AutoProof however couldn'd draw the conclusion that therefore the sorted array is a permutation of the input array.
+Thanks to a tip from Julian Tschannen I could finally resolve the issue by using a slightly different check for sequence equality.
+
+I also encountered the same problem in AutoProof which I already had in Boogie:
+Even though I could prove that two arrays contain the same elements (using permutations), the tool was not able to infer that the range of possible values stays the same.
+To solve this I implemented the workaround from Boogie in Eiffel as well.
+This means that the Quicksort implementation gets the boundary values as an argument and has to make sure that they're maintained throughout the call.
+
+Overall, the verification of Quicksort in AutoProof was very tough.
 In fact during my first attempt I stopped with the AutoProof solution and started working on Boogie.
-Thanks to the Boogie solution I then had a slightly better idea what was going on in the background.
+After that I had a slightly better idea about what's going on in the background, and I was finally able to proof the algorithm correct.
 
-The main problem was that the verifier had its own peculiar ideas about what is a permutation and what is not.
-This is something which is still not resolved in the final solution.
-While I was able to verify that the input is \emph{equal} to a local array, and the local array is a permutation of the sorted array, 
-AutoProof cannot draw the conclusion that therefore the sorted array is a permutation of the input array.
-This was the point where I gave up and added an assume clause.
+\subsubsection{Bucketsort}
 
-I also encountered the same problems in the Eiffel as in Boogie, like the problem with minimum/maximum staying the same in a permtuted array.
-As I already identified the problems earlier in Boogie I just implemented the same workarounds in Eiffel.
-
-\textbf{Bucketsort}
-
-\textbf{Array concatenation}
+After a successful verification of Quicksort, implementing and verifying Bucketsort was very easy.
+The algorithm is very similar to Quicksort.
+It also consists of splitting up the array into disjoint parts and then calling a sort algorithm on them.
 
 \section {Conclusion}
 
 During this project I've used both AutoProof and Boogie to verify different sorting algorithm.
-In my opinion, Boogie is a bit easier to use, because \todo{a reason}.
+In my opinion, Boogie is a bit easier to use, because it's more straightforward to figure out what's going on in the background.
 
 AutoProof on the other hand has a higher level of abstraction.
 However I think that precisely this abstraction makes it very hard to use AutoProof, 
@@ -133,18 +153,17 @@ because when something goes wrong you often have no idea and no hint about what'
 Another problem which mostly happened in AutoProof is that I often got a timeout error, which can be very frustrating.
 
 An advantage of AutoProof on the other hand is that it nicely integrates into the Eiffel programming language.
-This allows to at least partially prove some classes and features in a convenient and mostly automatic way, 
-and use traditional testing for features that could not be verified.
+This allows to at least partially prove some classes and features in a convenient and mostly automatic way
+and use them in real software instead of just verifying a sort algorithm for a student project.
 
 In both tools there's very little help provided when debugging a failed assertion.
 Getting it to verify therefore often involves hours of trial-and-error programming.
 I think for a static verifier to succeed in practice it needs at least to provide a counter example 
 or to say why it couldn't verify a statement, but this might be impossible to implement.
 
-In my opinion static verification of programs is not usable in practice.
-It can be very hard to prove even simple programs and checks where programmers can easily reason that a program is correct.
+In my opinion static verification of programs is not yet very usable in practice.
+It can be very hard to prove even simple programs which programmers can easily reason about.
 Furthermore, there's the problem that the specification itself may be wrong, and the verifier happily verifies a buggy program.
-I think time and money is better invested into rigorous testing and traditional mechanisms to ensure high quality, such as code reviews.
 
 \todos
 
