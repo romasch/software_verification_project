@@ -119,7 +119,7 @@ feature -- Sort implementations
 
                 -- Permutation-related invariants
                 permutation: is_permutation (left.sequence + middle.sequence + right.sequence, control.sequence)
-                same_array: across control.sequence.domain as i all control [i.item] =  input [i.item] end
+                same_array: across control.sequence.domain as i all control.sequence.item(i.item) =  input.sequence.item(i.item) end
 
 
             until
@@ -196,10 +196,11 @@ feature -- Sort implementations
 
             check is_in_fact_permutation:
                 is_permutation (Result.sequence, control.sequence)
-                and across control.sequence.domain as i all control [i.item] =  input [i.item] end
+                and across control.sequence.domain as i all control.sequence.item (i.item) =  input.sequence.item (i.item) end
             end
+            check control.sequence ~ input.sequence end
 
-            check assume: is_permutation (Result.sequence, input.sequence) end
+            check  is_permutation (Result.sequence, input.sequence) end
 
             --create Result.init (left.sequence + middle.sequence + right.sequence)
             --Result := three_way_merge (left, middle, right)
