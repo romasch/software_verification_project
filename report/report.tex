@@ -1,0 +1,118 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+
+% Handmade package to define patterns.
+% \usepackage{pattern}
+% For the \todo{} command.
+\usepackage{todo}
+
+% Nice fonts
+\usepackage{palatino}
+% Needed for Listings package with Eiffel.
+\usepackage{xcolor}
+% Source code listings.
+\usepackage{listings}
+% Appendix with extra title.
+\usepackage [page] {appendix}
+% To include PNG files.
+\usepackage{graphicx}
+% Nice looking captions.
+\usepackage[font={footnotesize,sl}, labelfont=bf] {caption}
+% Include PDF pages.
+\usepackage{pdfpages}
+
+% Clickable links. Has to be the last package:
+\usepackage [hidelinks] {hyperref}
+
+
+\lstset{language=OOSC2Eiffel,basicstyle=\ttfamily\small}
+\definecolor{codebg}{rgb}{0.95,0.95,0.95}
+\setlength{\headheight}{28pt}
+\lstset{escapechar=\$}
+
+\newcommand{\dir}{\emph}
+\newcommand{\todoref}{\todo{ref}}
+
+% Title Page
+\title{Software Verification 2014 \\ Project Report}
+\author{Roman Schmocker \\ 09-911-215}
+
+
+\begin{document}
+
+\maketitle
+
+
+\section{Introduction}
+
+\section{Eiffel}
+
+\subsection{Implementation}
+
+The implementation of the features in \lstinline!SV_LIST! was pretty straightforward.
+The problem however was, as I later realized, that the implementation wasn't always suited to verification.
+Therefore the relevant sort features like Quicksort and Bucketsort had to be adapted several types, 
+and the final implementation carries a lot of overhead to keep track of state needed for verification.
+
+\subsection{Specification}
+
+Due to my big experience with Eiffel programs, specifying pre- and postconditions was very easy.
+The only challenge were the sorting algorithms, where the specification should not just include that the array is sorted,
+but also that the final array contains the same elements as the input array.
+Otherwise one could just return a zero-filled value as a valid result.
+
+The verification phase however brought some unplanned changes again.
+I had to add some specifications, such as the number of elements staying the same during a sort, 
+as AutoProof wasn't able to infer that from the fact that all elements stay the same.
+
+\subsection{Verification}
+
+\textbf{General featuers:}
+The class SV_LIST was shipped with many small features such as \lstinline!extend! or \lstinline!count!.
+These were very easy to prove, often not even requiring any special additions besides pre- and postconditions.
+
+\textbf{Quicksort}
+
+\textbf{Bucketsort}
+
+\textbf{Array concatenation}
+
+\section {Boogie}
+
+In the Boogie part I only verified Quicksort due to time constraints.
+A particular challenge was to show that the elements of the final array are the same as in the input array.
+An extensive literature study (i.e. typing ``boogie sort algorithm'' in Google) showed that the solution is to 
+keep track of the permutation explicitly.
+
+Therefore I chose to use three global variables:
+\begin{itemize}
+ \item The input array.
+ \item The sorted output array.
+ \item A permutation array to map the sorted array to the input array.
+\end{itemize}
+
+Using this system I was able to set up a global invariant that the permutation is always a valid mapping.
+This invariant can be found in basically every precondition, postcondition and loop invariant, and it's the reason why the permutation proof became very simple in the end.
+
+Proving that the output is actually sorted was another challenge.
+Even though I could prove that each element in the sorted array maps to the input array,
+Boogie was not able to infer that the corresponding minima and maxima in a subarray stay the same.
+
+The solution was therefore to keep track of these values explicitly.
+I had to extend the interface of the quicksort routine to get the boundary values and add preconditions, 
+loop invariants and postconditions to make sure everything is maintained.
+
+\section {Conclusion}
+
+\subsection{Comparison of AutoProof and Boogie}
+
+\addcontentsline{toc}{section}{References}
+\begin{flushleft}
+{{{
+\bibliographystyle {plain}
+\bibliography {./references}
+}}}
+\end{flushleft}
+
+\end{document}          
+ 
