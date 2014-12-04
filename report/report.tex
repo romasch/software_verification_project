@@ -54,13 +54,31 @@ The last section compares the two tools and draws conclusions.
 \section {Boogie}
 
 In the Boogie part I only verified Quicksort due to time constraints.
-A particular challenge was to show that the elements of the final array are the same as in the input array.
+
+The Boogie solution for Quicksort contains three procedures \lstinline!Swap!, \lstinline!Split! and \lstinline!QuickSort!.
+All features manipulate a single global integer array where the sorting happens.
+
+The main pieces needed for verification are the postconditions of all three features, as well as the loop invariants in \lstinline!Split!.
+The specifications can be roughly split into four different groups to verify that
+\begin{itemize}
+ \item the result is sorted, 
+ \item the result is a permutation of the input,
+ \item the procedure does not modify the global array outside the specified range,
+ \item and the minimum and maximum values within a specified range stay the same.
+\end{itemize}
+
+The last point was necessary because, although Boogie could verify that the result is a permutation of the original array,
+it was not able to infer that the minimum and maximum values stay the same.
+A workaround was therefore to keep track of these values explicitly by extending the interface of \lstinline!QuickSort! to get the boundary values
+and add all these contracts which make sure the boundary is maintained.
+
+Another challenge was to show that the elements of the final array are the same as in the input array.
 An extensive literature study \footnote{Typing ``boogie sort algorithm'' in Google.} showed that the solution is to 
 keep track of the permutation explicitly \cite{web:boogie:bubblesort}.
 
-Therefore I chose to use three global variables:
+To do this I added two more global arrays, such that in the final solution there are three of them:
 \begin{itemize}
- \item The input array.
+ \item The initial input array. This array is never modified.
  \item The sorted output array.
  \item A permutation array to map the sorted array to the input array.
 \end{itemize}
@@ -68,23 +86,14 @@ Therefore I chose to use three global variables:
 Using this system I was able to set up a global invariant that the permutation is always a valid mapping.
 This invariant can be found in basically every precondition, postcondition and loop invariant, and it's the reason why the permutation proof became very simple in the end.
 
-Proving that the output is actually sorted was another challenge.
-Even though I could prove that each element in the sorted array maps to the input array,
-Boogie was not able to infer that the corresponding minima and maxima in a subarray stay the same.
-
-The solution was therefore to keep track of these values explicitly.
-I had to extend the interface of the quicksort routine to get the boundary values and add preconditions, 
-loop invariants and postconditions to make sure everything is maintained.
-
-
 \section{Eiffel}
 
 \subsection{Implementation}
 
 The implementation of the features in \lstinline!SV_LIST! was pretty straightforward.
 The problem however was, as I later realized, that the implementation wasn't always suited to verification.
-Therefore the relevant sort features like Quicksort and Bucketsort had to be adapted several types, 
-and the final implementation carries a lot of overhead to keep track of state needed for verification.
+Therefore the relevant sort features like Quicksort and Bucketsort had to be adapted several times 
+and the final implementation carries some overhead to keep track of state needed for verification.
 
 \subsection{Specification}
 
@@ -92,10 +101,11 @@ Due to my experience with Eiffel programs, specifying pre- and postconditions wa
 The only challenge were the sorting algorithms, where the specification should not just include that the array is sorted,
 but also that the final array contains the same elements as the input array.
 Otherwise one could just return a zero-filled array as a valid result.
+I solved this the same way as in the Boogie solution, by specifying that the result is a permutation of the input array.
 
 The verification phase however brought some unplanned changes again.
 I had to add some specifications, such as the number of elements staying the same during a sort, 
-as AutoProof wasn't able to infer that from the fact that the output is a permutation of the input.
+as AutoProof wasn't able to infer that from the postcondition about permutation only.
 
 \subsection{Verification}
 
@@ -106,7 +116,7 @@ These were very easy to prove, often not even requiring any further specificatio
 \subsubsection{Quicksort}
 
 The Quicksort algorithm is fully verified in AutoProof.
-Besides prooving that the output is sorted, I was also able to prove that the final result is a permutation of the input array.
+Besides proving that the output is sorted, I was also able to prove that the final result is a permutation of the input array.
 
 The algorithm selects the first element in the input as a pivot and then distributes the remaining elements into two arrays (\lstinline!left! and \lstinline!right!).
 It then recursively calls \lstinline!quick_sort! on both elements and merges the two results.
@@ -154,7 +164,7 @@ and it's easier to figure out what is going on during the verification process.
 
 AutoProof on the other hand has a higher level of abstraction.
 However I think that exactly this abstraction makes it harder to use AutoProof, 
-because when something goes wrong you often have no idea and no hint about what's the problem.
+because when something goes wrong you often have no idea and no hint about what causes the problem.
 Another problem which mostly happened in AutoProof is that I often got a timeout error, which can be very frustrating.
 
 An advantage of AutoProof on the other hand is that it nicely integrates into the Eiffel programming language.
@@ -163,12 +173,14 @@ and use them in real software, instead of just verifying a sort algorithm for a 
 
 In both tools there's very little help provided when debugging a failed assertion.
 Getting it to verify therefore often involves hours of trial-and-error programming.
-I think for a static verifier to succeed in practice it needs to at least provide a counter example 
+I think for a static verifier to succeed in practice it needs to at least provide a counterexample 
 or say why it couldn't verify a statement, but this might be infeasible to do.
 
-In my opinion static verification of programs is not yet very usable in practice.
-It can be very hard to prove even simple programs which programmers can easily reason about.
-Furthermore, there's the problem that the specification itself may be wrong, and the verifier happily verifies a buggy program.
+In my opinion static verification of programs is not yet very usable in practice,
+because it can be very hard to prove even simple programs which programmers can easily reason about.
+There's also the problem that the specification itself may be wrong with respect to the requirements, 
+and the verifier thus happily verifies a buggy program.
+Therefore I think verification can at most serve as a complement to traditional software quality assurance techniques.
 
 \begin{flushleft}
 {{{
