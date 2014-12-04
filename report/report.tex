@@ -1,8 +1,7 @@
 \documentclass[a4paper,10pt]{article}
 \usepackage[utf8]{inputenc}
 
-% Handmade package to define patterns.
-% \usepackage{pattern}
+
 % For the \todo{} command.
 \usepackage{todo}
 
@@ -13,13 +12,13 @@
 % Source code listings.
 \usepackage{listings}
 % Appendix with extra title.
-\usepackage [page] {appendix}
+% \usepackage [page] {appendix}
 % To include PNG files.
-\usepackage{graphicx}
+% \usepackage{graphicx}
 % Nice looking captions.
-\usepackage[font={footnotesize,sl}, labelfont=bf] {caption}
+% \usepackage[font={footnotesize,sl}, labelfont=bf] {caption}
 % Include PDF pages.
-\usepackage{pdfpages}
+% \usepackage{pdfpages}
 
 % Clickable links. Has to be the last package:
 \usepackage [hidelinks] {hyperref}
@@ -44,8 +43,8 @@
 
 
 \section{Introduction}
-This report covers the implementation and verification of the two sort algorithms BucketSort \todoref and QuickSort \todoref.
-The tools used to verify the code are AutoProof \todoref and Boogie\todoref.
+This report covers the implementation and verification of the two sort algorithms BucketSort \cite{web:bucketsort} and QuickSort \cite{web:quicksort}.
+The tools used to verify the code are AutoProof \cite{web:autoproof} and Boogie \cite{paper:boogie, web:boogie}.
 
 The structure of the report follows the chronological order in which the tasks were completed.
 The first section deals with the Boogie verification of the Quicksort algorithm.
@@ -56,8 +55,8 @@ The last section compares the two tools and draws conclusions.
 
 In the Boogie part I only verified Quicksort due to time constraints.
 A particular challenge was to show that the elements of the final array are the same as in the input array.
-An extensive literature study (i.e. typing ``boogie sort algorithm'' in Google) showed that the solution is to 
-keep track of the permutation explicitly.
+An extensive literature study \footnote{Typing ``boogie sort algorithm'' in Google.} showed that the solution is to 
+keep track of the permutation explicitly \cite{web:boogie:bubblesort}.
 
 Therefore I chose to use three global variables:
 \begin{itemize}
@@ -141,31 +140,35 @@ After that I had a slightly better idea about what's going on in the background,
 After a successful verification of Quicksort, implementing and verifying Bucketsort was very easy.
 The algorithm is very similar to Quicksort.
 It also consists of splitting up the array into disjoint parts and then calling a sort algorithm on them.
+In this case the function didn't even have to be recursive, which simplified things a little.
+
+I encountered one problem when trying to verify that the array is still sorted after calling \lstinline!quick_sort! on each of the buckets.
+The solution was to introduce a new \lstinline!check! instruction which states that the ranges of values within each bucket are still disjoint.
+This apparently helped the Boogie backend to trigger the right axiom, such that it was able to verify the algorithm.
 
 \section {Conclusion}
 
-During this project I've used both AutoProof and Boogie to verify different sorting algorithm.
-In my opinion, Boogie is a bit easier to use, because it's more straightforward to figure out what's going on in the background.
+During this project I was able to fully verify Quicksort in both AutoProof and Boogie, and Bucketsort in AutoProof only.
+In my opinion Boogie is a little bit simpler to use because the language is fully designed with verification in mind
+and it's easier to figure out what is going on during the verification process.
 
 AutoProof on the other hand has a higher level of abstraction.
-However I think that precisely this abstraction makes it very hard to use AutoProof, 
+However I think that exactly this abstraction makes it harder to use AutoProof, 
 because when something goes wrong you often have no idea and no hint about what's the problem.
 Another problem which mostly happened in AutoProof is that I often got a timeout error, which can be very frustrating.
 
 An advantage of AutoProof on the other hand is that it nicely integrates into the Eiffel programming language.
 This allows to at least partially prove some classes and features in a convenient and mostly automatic way
-and use them in real software instead of just verifying a sort algorithm for a student project.
+and use them in real software, instead of just verifying a sort algorithm for a student project.
 
 In both tools there's very little help provided when debugging a failed assertion.
 Getting it to verify therefore often involves hours of trial-and-error programming.
-I think for a static verifier to succeed in practice it needs at least to provide a counter example 
-or to say why it couldn't verify a statement, but this might be impossible to implement.
+I think for a static verifier to succeed in practice it needs to at least provide a counter example 
+or say why it couldn't verify a statement, but this might be infeasible to do.
 
 In my opinion static verification of programs is not yet very usable in practice.
 It can be very hard to prove even simple programs which programmers can easily reason about.
 Furthermore, there's the problem that the specification itself may be wrong, and the verifier happily verifies a buggy program.
-
-\todos
 
 \begin{flushleft}
 {{{
@@ -173,6 +176,9 @@ Furthermore, there's the problem that the specification itself may be wrong, and
 \bibliography {./references}
 }}}
 \end{flushleft}
+
+
+\todos
 
 \end{document}          
  
