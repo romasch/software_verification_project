@@ -46,14 +46,14 @@
 This report covers the implementation and verification of the two sort algorithms BucketSort \cite{web:bucketsort} and QuickSort \cite{web:quicksort}.
 The tools used to verify the code are AutoProof \cite{web:autoproof} and Boogie \cite{paper:boogie, web:boogie}.
 
-The structure of the report follows the chronological order in which the tasks were completed.
-The first section deals with the Boogie verification of the Quicksort algorithm.
-Following that is a section about the AutoProof solution.
+The report is mostly structured based on my workflow during the project.
+The first section deals with the Boogie solution of the Quicksort and Bucketsort algorithm.
+The next section is about the AutoProof verification of both algorithms.
 The last section compares the two tools and draws conclusions.
 
 \section {Boogie}
 
-In the Boogie part I only verified Quicksort due to time constraints.
+\subsection {Quicksort}
 
 The Boogie solution for Quicksort contains three procedures \lstinline!Swap!, \lstinline!Split! and \lstinline!QuickSort!.
 All features manipulate a single global integer array where the sorting happens.
@@ -76,16 +76,39 @@ Another challenge was to show that the elements of the final array are the same 
 An extensive literature study \footnote{Typing ``boogie sort algorithm'' in Google.} showed that the solution is to 
 keep track of the permutation explicitly \cite{web:boogie:bubblesort}.
 
-To do this I added two more global arrays, such that in the final solution there are three of them:
+To do this I had to add two more arrays.
+Therefore the final solution ships with three global arrays:
 \begin{itemize}
  \item The initial input array. This array is never modified.
  \item The sorted output array.
  \item A permutation array to map the sorted array to the input array.
 \end{itemize}
 
-Using this system I was able to set up a global invariant that the permutation is always a valid mapping.
+Using this system I was able to set up a ``global'' invariant that the permutation is always a valid mapping.
 This invariant can be found in basically every precondition, postcondition and loop invariant, and it's the reason why the permutation proof became very simple in the end.
 
+\subsection{Bucketsort}
+
+The Bucketsort implementation has three important procedures: \lstinline!BucketSort!, \lstinline!ConcatenateArray! and \lstinline!MagicSort!.
+The last one defines a sort algorithm that exists as a specification only and is used by \lstinline!BucketSort! to sort its buckets.
+
+Due to time constraints I didn't attempt to prove that the result of the \lstinline!BucketSort! is a permutation of the input.
+Instead I just focused on proving that it is sorted.
+
+The core of the algorithm is the loop that distributes the elements among three different buckets.
+It uses the following formula to determine the bucket an element $elem$ has to be placed in:
+
+\begin {center}
+\lstinline!bucket_index := (elem + 3*N) div (2*N);!
+\end {center}
+
+The loop invariant then basically states that all elements $elem$ in the bucket with index $i$ are in the range:
+\begin {center}
+$2iN <= elem + 3N < (2(i+1)N)$
+\end {center}
+
+With this loop invariant Boogie was able to prove that all values in the ``left'' bucket are smaller than all values on the ``middle'' and ``right'' buckets, 
+which it then could use to verify that the final array is sorted after calling \lstinline!MagicSort! on each bucket.
 \section{Eiffel}
 
 \subsection{Implementation}
@@ -105,13 +128,13 @@ I solved this the same way as in the Boogie solution, by specifying that the res
 
 The verification phase however brought some unplanned changes again.
 I had to add some specifications, such as the number of elements staying the same during a sort, 
-as AutoProof wasn't able to infer that from the postcondition about permutation only.
+as AutoProof wasn't able to infer that from the permutation fact only.
 
 \subsection{Verification}
 
 \subsubsection{General featuers}
-The class \lstinline!SV_LIST! was shipped with many small features such as \lstinline!extend! or \lstinline!count!.
-These were very easy to prove, often not even requiring any further specification besides pre- and postconditions.
+The class \lstinline!SV_LIST! was shipped with many small features such as \lstinline!extend! or \lstinline!at!.
+These were very easy to prove, often not even requiring any further checks or contracts besides pre- and postconditions.
 
 \subsubsection{Quicksort}
 
@@ -132,9 +155,9 @@ The invariants then state that the concatenation of \lstinline!left!, \lstinline
 and that the \lstinline!control! array will eventually be equal to the input array.
 
 The main problem that I had during development was that AutoProof had some peculiar ideas about what could be a permutation.
-At some point I was able to verify that the input array is \emph{equal} to a local array, and the local array is a permutation of the sorted array.
+At some point I was able to verify that the input array is \emph{equal} to the \lstinline!control! array, and the local\lstinline!control! array is a permutation of the sorted array.
 AutoProof however couldn'd draw the conclusion that therefore the sorted array is a permutation of the input array.
-Thanks to a tip from Julian Tschannen I could finally resolve the issue by using a slightly different check for sequence equality.
+Thanks to a tip from Julian Tschannen I could finally resolve the issue by using a slightly different check for equality between the input and the \lstinline!control! array.
 
 I also encountered the same problem in AutoProof which I already had in Boogie:
 Even though I could prove that two arrays contain the same elements (using permutations), the tool was not able to infer that the range of possible values stays the same.
@@ -158,7 +181,7 @@ This apparently helped the Boogie backend to trigger the right axiom, such that 
 
 \section {Conclusion}
 
-During this project I was able to fully verify Quicksort in both AutoProof and Boogie, and Bucketsort in AutoProof only.
+During this project I was able to verify the Quicksort and Bucketsort algorithms in both AutoProof and Boogie.
 In my opinion Boogie is a little bit simpler to use because the language is fully designed with verification in mind
 and it's easier to figure out what is going on during the verification process.
 
@@ -176,7 +199,7 @@ Getting it to verify therefore often involves hours of trial-and-error programmi
 I think for a static verifier to succeed in practice it needs to at least provide a counterexample 
 or say why it couldn't verify a statement, but this might be infeasible to do.
 
-In my opinion static verification of programs is not yet very usable in practice,
+Overall I think that static verification of programs is not yet very usable in practice,
 because it can be very hard to prove even simple programs which programmers can easily reason about.
 There's also the problem that the specification itself may be wrong with respect to the requirements, 
 and the verifier thus happily verifies a buggy program.
@@ -188,9 +211,6 @@ Therefore I think verification can at most serve as a complement to traditional 
 \bibliography {./references}
 }}}
 \end{flushleft}
-
-
-\todos
 
 \end{document}          
  
