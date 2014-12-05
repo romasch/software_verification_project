@@ -145,7 +145,7 @@ The Quicksort algorithm is fully verified in AutoProof.
 Besides proving that the output is sorted, I was also able to prove that the final result is a permutation of the input array.
 
 The algorithm selects the first element in the input as a pivot and then distributes the remaining elements into two arrays (\lstinline!left! and \lstinline!right!).
-It then recursively calls \lstinline!quick_sort! on both elements and merges the two results.
+It then recursively calls \lstinline!quick_sort! on both elements and concatenates the two results.
 
 At the core of the verification for Quicksort are the loop invariants during the split phase.
 There are two groups of invariants.
@@ -195,7 +195,7 @@ Another problem which mostly happened in AutoProof is that I often got a timeout
 
 An advantage of AutoProof on the other hand is that it nicely integrates into the Eiffel programming language.
 This allows to at least partially prove some classes and features in a convenient and mostly automatic way
-and use them in real software, instead of just verifying a sort algorithm for a student project.
+and use them afterwards in real software, instead of just verifying a sort algorithm for a student project.
 
 In both tools there's very little help provided when debugging a failed assertion.
 Getting it to verify therefore often involves hours of trial-and-error programming.
