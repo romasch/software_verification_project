@@ -20,6 +20,9 @@
 % Include PDF pages.
 % \usepackage{pdfpages}
 
+% More control over title.
+\usepackage{titling}
+
 % Clickable links. Has to be the last package:
 \usepackage [hidelinks] {hyperref}
 
@@ -33,17 +36,17 @@
 \newcommand{\todoref}{\todo{ref}}
 
 % Title Page
-\title{Software Verification 2014 \\ Project Report}
-\author{Roman Schmocker \\ 09-911-215}
-
+\title{Software Verification 2014 \\ Project Report \vspace{-2ex}}
+\author{Roman Schmocker \\ 09-911-215 \vspace{-2ex}}
 
 \begin{document}
 
+\setlength{\droptitle}{-80pt}
 \maketitle
 
 
 \section{Introduction}
-This report covers the implementation and verification of the two sort algorithms BucketSort \cite{web:bucketsort} and QuickSort \cite{web:quicksort}.
+This report covers the implementation and verification of the two sort algorithms Bucketsort \cite{web:bucketsort} and Quicksort \cite{web:quicksort}.
 The tools used to verify the code are AutoProof \cite{web:autoproof} and Boogie \cite{paper:boogie, web:boogie}.
 
 The report is mostly structured based on my workflow during the project.
@@ -55,22 +58,22 @@ The last section compares the two tools and draws conclusions.
 
 \subsection {Quicksort}
 
-The Boogie solution for Quicksort contains three procedures \lstinline!Swap!, \lstinline!Split! and \lstinline!QuickSort!.
-All features manipulate a single global integer array where the sorting happens.
+The Boogie solution for Quicksort contains the three procedures \lstinline!Swap!, \lstinline!Split! and \lstinline!QuickSort!.
+All features manipulate a single global integer array where the sorting takes place.
 
 The main pieces needed for verification are the postconditions of all three features, as well as the loop invariants in \lstinline!Split!.
 The specifications can be roughly split into four different groups to verify that
 \begin{itemize}
  \item the result is sorted, 
- \item the result is a permutation of the input,
+ \item the elements in the result array are the same as in the input,
  \item the procedure does not modify the global array outside the specified range,
  \item and the minimum and maximum values within a specified range stay the same.
 \end{itemize}
 
-The last point was necessary because, although Boogie could verify that the result is a permutation of the original array,
-it was not able to infer that the minimum and maximum values stay the same.
+The last point was necessary because, although Boogie could verify that all elements stay the same,
+it was not able to infer that the minimum and maximum values do not change as well.
 A workaround was therefore to keep track of these values explicitly by extending the interface of \lstinline!QuickSort! to get the boundary values
-and add all these contracts which make sure the boundary is maintained.
+and add contracts which make sure the boundary is maintained.
 
 Another challenge was to show that the elements of the final array are the same as in the input array.
 An extensive literature study \footnote{Typing ``boogie sort algorithm'' in Google.} showed that the solution is to 
@@ -92,7 +95,7 @@ This invariant can be found in basically every precondition, postcondition and l
 The Bucketsort implementation has three important procedures: \lstinline!BucketSort!, \lstinline!ConcatenateArray! and \lstinline!MagicSort!.
 The last one defines a sort algorithm that exists as a specification only and is used by \lstinline!BucketSort! to sort its buckets.
 
-Due to time constraints I didn't attempt to prove that the result of the \lstinline!BucketSort! is a permutation of the input.
+Due to time constraints I didn't attempt to prove that the result of the \lstinline!BucketSort! procedure is a permutation of the input.
 Instead I just focused on proving that it is sorted.
 
 The core of the algorithm is the loop that distributes the elements among three different buckets.
@@ -102,7 +105,7 @@ It uses the following formula to determine the bucket an element $elem$ has to b
 \lstinline!bucket_index := (elem + 3*N) div (2*N);!
 \end {center}
 
-The loop invariant then basically states that all elements $elem$ in the bucket with index $i$ are in the range:
+The loop invariant then basically states that all elements in the bucket with index $i$ are in the range:
 \begin {center}
 $2iN <= elem + 3N < (2(i+1)N)$
 \end {center}
@@ -134,7 +137,7 @@ as AutoProof wasn't able to infer that from the permutation fact only.
 
 \subsubsection{General featuers}
 The class \lstinline!SV_LIST! was shipped with many small features such as \lstinline!extend! or \lstinline!at!.
-These were very easy to prove, often not even requiring any further checks or contracts besides pre- and postconditions.
+These were very easy to prove correct, often not even requiring any further checks or contracts besides pre- and postconditions.
 
 \subsubsection{Quicksort}
 
@@ -155,7 +158,7 @@ The invariants then state that the concatenation of \lstinline!left!, \lstinline
 and that the \lstinline!control! array will eventually be equal to the input array.
 
 The main problem that I had during development was that AutoProof had some peculiar ideas about what could be a permutation.
-At some point I was able to verify that the input array is \emph{equal} to the \lstinline!control! array, and the local\lstinline!control! array is a permutation of the sorted array.
+At some point I was able to verify that the input array is \emph{equal} to the \lstinline!control! array, and the \lstinline!control! array is a permutation of the sorted array.
 AutoProof however couldn'd draw the conclusion that therefore the sorted array is a permutation of the input array.
 Thanks to a tip from Julian Tschannen I could finally resolve the issue by using a slightly different check for equality between the input and the \lstinline!control! array.
 

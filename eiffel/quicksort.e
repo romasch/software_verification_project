@@ -148,6 +148,7 @@ feature {NONE} -- Stubs
         require
             wrapped: a.is_wrapped and b.is_wrapped
         do
+			-- see sv_list.e
             create Result.make_empty
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
