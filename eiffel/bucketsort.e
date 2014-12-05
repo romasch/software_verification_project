@@ -52,6 +52,9 @@ feature -- Sort implementations
         local
             left, middle, right: SIMPLE_ARRAY [INTEGER]
             control: SIMPLE_ARRAY [INTEGER]
+            
+            buckets: SIMPLE_ARRAY [SIMPLE_ARRAY [INTEGER]]
+            bucket_index: INTEGER
 
             index: INTEGER
             current_value: INTEGER
@@ -60,9 +63,16 @@ feature -- Sort implementations
             boundary := N
             check positive: boundary > 0 end
             from
+                -- We use some helper arrays here for better understandability.
                 create left.make_empty
                 create middle.make_empty
                 create right.make_empty
+                
+                create buckets.make_empty
+                buckets.force (left, buckets.count+1)
+                buckets.force (middle, buckets.count+1)
+                buckets.force (right, buckets.count+1)
+                
                 create control.make_empty
 
                 index := 1
@@ -70,6 +80,9 @@ feature -- Sort implementations
                 wrapped: left.is_wrapped and middle.is_wrapped and right.is_wrapped and control.is_wrapped
                 count_correct: index = control.count + 1 and index = left.count + middle.count + right.count + 1
                 in_bounds: 1 <= index and index <= input.count+1
+
+                -- Buckets are aliased to our helper arrays.
+                buckets_assigned: buckets [1] = left and buckets [2] = middle and buckets [3] = right
 
                 -- Sort-related invariants
                 correct_split_left: across left.sequence.domain as i all -3*boundary <= left.sequence.item (i.item) and left.sequence.item (i.item) < -boundary end
@@ -84,14 +97,13 @@ feature -- Sort implementations
             loop
                 current_value := input [index]
                 control.force (current_value, control.count+1)
+                
+                bucket_index := ((current_value + 3*N) // (2*N))
+                check in_range: 0 <= bucket_index and bucket_index <= 2 end
 
-                if current_value < -boundary then
-                    left.force (current_value, left.count+1)
-                elseif current_value < boundary then
-                    middle.force (current_value, middle.count+1)
-                else
-                    right.force (current_value, right.count+1)
-                end
+                -- Add the element to the correct bucket.
+                buckets [bucket_index + 1].force (current_value, buckets [bucket_index + 1].count+1)
+
                 index := index + 1
             variant
                 input.count + 1 - index

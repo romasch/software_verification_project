@@ -153,13 +153,13 @@ feature -- Sorting
 feature -- For use in specifications
 
     has_small_elements (a: SIMPLE_ARRAY [INTEGER]): BOOLEAN
-            -- Are all elements of `a' small (i.e., in the range [-3N..3N])?
+            -- Are all elements of `a' small, i.e., in the range [-3N..3N)?
         note
             status: functional
         require
             a /= Void
         do
-            Result := across a.sequence.domain as i all -3*N <= a.sequence[i.item] and a.sequence[i.item] <= 3*N end
+            Result := across a.sequence.domain as i all -3*N <= a.sequence[i.item] and a.sequence[i.item] < 3*N end
         end
 
     is_sorted (a: SIMPLE_ARRAY [INTEGER]): BOOLEAN
