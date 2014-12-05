@@ -12,13 +12,13 @@ feature -- Constant parameters
 feature -- For use in specifications
 
     has_small_elements (a: SIMPLE_ARRAY [INTEGER]): BOOLEAN
-            -- Are all elements of `a' small (i.e., in the range [-3N..3N])?
+            -- Are all elements of `a' small (i.e., in the range [-3N..3N) )?
         note
             status: functional
         require
             a /= Void
         do
-            Result := across a.sequence.domain as i all -3*N <= a.sequence[i.item] and a.sequence[i.item] <= 3*N end
+            Result := across a.sequence.domain as i all -3*N <= a.sequence[i.item] and a.sequence[i.item] < 3*N end
         end
 
     is_sorted (a: SIMPLE_ARRAY [INTEGER]): BOOLEAN
@@ -73,8 +73,8 @@ feature -- Sort implementations
 
                 -- Sort-related invariants
                 correct_split_left: across left.sequence.domain as i all -3*boundary <= left.sequence.item (i.item) and left.sequence.item (i.item) < -boundary end
-                correct_split_middle: across middle.sequence.domain as i all -boundary <= middle.sequence.item (i.item)  and middle.sequence.item (i.item)  <= boundary end
-                correct_split_right: across right.sequence.domain as i all boundary < right.sequence.item (i.item)  and right.sequence.item (i.item)  <= 3*boundary  end
+                correct_split_middle: across middle.sequence.domain as i all -boundary <= middle.sequence.item (i.item)  and middle.sequence.item (i.item)  < boundary end
+                correct_split_right: across right.sequence.domain as i all boundary <= right.sequence.item (i.item)  and right.sequence.item (i.item)  < 3*boundary  end
 
                 -- Permutation-related invariants
                 permutation: is_permutation (left.sequence + middle.sequence + right.sequence, control.sequence)
@@ -87,7 +87,7 @@ feature -- Sort implementations
 
                 if current_value < -boundary then
                     left.force (current_value, left.count+1)
-                elseif current_value <= boundary then
+                elseif current_value < boundary then
                     middle.force (current_value, middle.count+1)
                 else
                     right.force (current_value, right.count+1)
@@ -98,15 +98,16 @@ feature -- Sort implementations
             end
 
             -- Call quicksort to sort the individual buckets.
+            -- Note: It's a bit unfortunate that I designed quicksort to have (lower < x <= middle) instead of (lower <= x < upper).
             left := quick_sort_impl (left, -3*boundary-1, -boundary-1, True, True)
-            middle := quick_sort_impl (middle, -boundary-1, boundary, True, True)
-            right := quick_sort_impl (right, boundary, 3* boundary, True, True)
+            middle := quick_sort_impl (middle, -boundary-1, boundary-1, True, True)
+            right := quick_sort_impl (right, boundary-1, 3*boundary-1, True, True)
 
             -- Check that the ranges are still the same.
             -- This is apparently necessary to trigger an axiom.
             check correct_split_left: across left.sequence.domain as i all -3*boundary <= left.sequence.item (i.item) and left.sequence.item (i.item) < -boundary end end
-            check correct_split_middle: across middle.sequence.domain as i all -boundary <= middle.sequence.item (i.item)  and middle.sequence.item (i.item)  <= boundary end end
-            check correct_split_right: across right.sequence.domain as i all boundary < right.sequence.item (i.item)  and right.sequence.item (i.item)  <= 3*boundary  end end
+            check correct_split_middle: across middle.sequence.domain as i all -boundary <= middle.sequence.item (i.item)  and middle.sequence.item (i.item)  < boundary end end
+            check correct_split_right: across right.sequence.domain as i all boundary <= right.sequence.item (i.item)  and right.sequence.item (i.item)  < 3*boundary  end end
 
             -- Check needed for permutation proof.
             check control.sequence ~ input.sequence end
@@ -129,6 +130,7 @@ feature {NONE} -- Stubs
         require
             wrapped: a.is_wrapped and b.is_wrapped
         do
+            -- see sv_list.e
             create Result.make_empty
         ensure
             default_stuff: Result.is_wrapped and Result.is_fresh
